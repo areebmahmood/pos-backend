@@ -32,6 +32,7 @@ public static class SaleMappings
                 i.Quantity,
                 i.UnitPrice,
                 i.DiscountedUnitPrice,
+                i.ManualDiscount,
                 i.LineDiscount,
                 i.LineTotal,
                 i.ReturnedQuantity))

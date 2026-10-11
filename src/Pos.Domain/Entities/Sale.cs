@@ -62,7 +62,7 @@ public class Sale : AuditableEntity
         string invoiceNumber,
         RegisterSession register,
         int cashierId,
-        IEnumerable<(Product Product, decimal Quantity)> lines,
+        IEnumerable<SaleLine> lines,
         PaymentMethod paymentMethod,
         decimal amountPaid,
         decimal billDiscount,
@@ -72,8 +72,8 @@ public class Sale : AuditableEntity
         register.EnsureOpen();
 
         var sale = new Sale(invoiceNumber, register, cashierId, customerName, customerPhone);
-        foreach (var (product, quantity) in lines)
-            sale.AddItem(product, quantity);
+        foreach (var line in lines)
+            sale.AddItem(line.Product, line.Quantity, line.Discount);
 
         if (sale._items.Count == 0)
             throw new DomainException("A sale must contain at least one item.");
@@ -82,16 +82,16 @@ public class Sale : AuditableEntity
         return sale;
     }
 
-    private void AddItem(Product product, decimal quantity)
+    private void AddItem(Product product, decimal quantity, decimal discount)
     {
         if (!product.IsActive || product.IsDeleted)
             throw new DomainException($"'{product.Name}' is not available for sale.");
 
         var existing = _items.FirstOrDefault(i => i.ProductId == product.Id);
         if (existing is null)
-            _items.Add(new SaleItem(product, quantity));
+            _items.Add(new SaleItem(product, quantity, discount));
         else
-            existing.Merge(quantity);
+            existing.Merge(quantity, discount);
     }
 
     private void Checkout(PaymentMethod paymentMethod, decimal amountPaid, decimal billDiscount)
@@ -129,10 +129,10 @@ public class Sale : AuditableEntity
     public decimal PaidUnitPrice(SaleItem item)
     {
         if (BillDiscount == 0 || NetBeforeBillDiscount == 0)
-            return item.DiscountedUnitPrice;
+            return item.NetUnitPrice;
 
         var factor = 1 - BillDiscount / NetBeforeBillDiscount;
-        return item.DiscountedUnitPrice * factor;
+        return item.NetUnitPrice * factor;
     }
 
     public SaleReturn ProcessReturn(
@@ -171,3 +171,6 @@ public class Sale : AuditableEntity
         return saleReturn;
     }
 }
+
+/// <summary>A requested bill line: the product, quantity and any extra discount amount for the whole line.</summary>
+public readonly record struct SaleLine(Product Product, decimal Quantity, decimal Discount = 0);

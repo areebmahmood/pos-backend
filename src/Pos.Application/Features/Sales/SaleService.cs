@@ -40,7 +40,7 @@ public sealed class SaleService(
                 invoiceNumbers.Next(),
                 register,
                 currentUser.UserId,
-                request.Items.Select(i => (productsById[i.ProductId], i.Quantity)),
+                request.Items.Select(i => new SaleLine(productsById[i.ProductId], i.Quantity, i.Discount)),
                 request.PaymentMethod,
                 request.AmountPaid,
                 request.BillDiscount,

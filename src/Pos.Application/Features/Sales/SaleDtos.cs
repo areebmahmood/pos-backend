@@ -12,6 +12,7 @@ public sealed record SaleItemDto(
     decimal Quantity,
     decimal UnitPrice,
     decimal DiscountedUnitPrice,
+    decimal ManualDiscount,
     decimal LineDiscount,
     decimal LineTotal,
     decimal ReturnedQuantity);
@@ -48,7 +49,8 @@ public sealed record SaleSummaryDto(
 
 public sealed record ReceiptDto(StoreSettingsDto Store, SaleDto Sale, string QrContent);
 
-public sealed record SaleLineRequest(int ProductId, decimal Quantity);
+/// <param name="Discount">Optional extra discount amount for the whole line, on top of the product's discounted price.</param>
+public sealed record SaleLineRequest(int ProductId, decimal Quantity, decimal Discount = 0);
 
 public sealed record CreateSaleRequest(
     IReadOnlyList<SaleLineRequest> Items,

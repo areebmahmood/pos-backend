@@ -72,6 +72,39 @@ public sealed class CheckoutFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Line_discount_is_applied_on_top_of_the_product_discount_and_refunded_pro_rata()
+    {
+        await OpenRegisterAsync(0);
+
+        // Rice: 3 x 320 = 960, minus a 60 line discount = 900. Soap: 2 x 120 = 240, no line discount.
+        var sale = await CheckoutAsync(
+            billDiscount: 0, amountPaid: 2000,
+            lines: [new SaleLineRequest(_rice.Id, 3, 60), new SaleLineRequest(_soap.Id, 2)]);
+
+        var rice = sale.Items.Single(i => i.ProductId == _rice.Id);
+        Assert.Equal(60, rice.ManualDiscount);
+        Assert.Equal(3 * 30 + 60, rice.LineDiscount);
+        Assert.Equal(900, rice.LineTotal);
+        Assert.Equal(3 * 350 + 2 * 120, sale.Subtotal);
+        Assert.Equal(150, sale.ItemDiscount);
+        Assert.Equal(1140, sale.Total);
+
+        var saleReturn = await _host.RunAsync<IReturnService, SaleReturnDto>(s => s.CreateAsync(
+            new CreateReturnRequest(sale.Id, null, [new ReturnLineRequest(rice.Id, 1)]), default));
+        Assert.Equal(300, saleReturn.RefundAmount);
+    }
+
+    [Fact]
+    public async Task Line_discount_cannot_exceed_the_line_amount()
+    {
+        await OpenRegisterAsync(0);
+
+        var error = await Assert.ThrowsAsync<DomainException>(() =>
+            CheckoutAsync(billDiscount: 0, amountPaid: 1000, lines: [new SaleLineRequest(_soap.Id, 1, 121)]));
+        Assert.Contains("cannot exceed the line amount", error.Message);
+    }
+
+    [Fact]
     public async Task Selling_more_than_in_stock_fails_without_saving_anything()
     {
         await OpenRegisterAsync(0);

@@ -16,6 +16,7 @@ public sealed class CreateSaleRequestValidator : AbstractValidator<CreateSaleReq
         {
             line.RuleFor(l => l.ProductId).GreaterThan(0);
             line.RuleFor(l => l.Quantity).GreaterThan(0).Quantity();
+            line.RuleFor(l => l.Discount).Money();
         });
         RuleFor(x => x.PaymentMethod).IsInEnum();
         RuleFor(x => x.AmountPaid).Money();
