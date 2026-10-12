@@ -37,6 +37,7 @@ internal sealed class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
         builder.Property(i => i.Barcode).HasMaxLength(Product.BarcodeMaxLength).IsRequired();
         builder.Property(i => i.Quantity).IsQuantity();
         builder.Property(i => i.ReturnedQuantity).IsQuantity();
+        builder.Property(i => i.UnitDiscount).HasPrecision(18, 4);
         builder.Ignore(i => i.ReturnableQuantity);
 
         builder.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);

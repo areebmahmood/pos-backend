@@ -120,9 +120,9 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 
 ## Sales (billing)
 
-`SaleItemDto`: `{ id, productId, productName, barcode, quantity, unitPrice, discountedUnitPrice, manualDiscount, lineDiscount, lineTotal, returnedQuantity }`
+`SaleItemDto`: `{ id, productId, productName, barcode, quantity, unitPrice, discountedUnitPrice, unitDiscount, manualDiscount, lineDiscount, lineTotal, returnedQuantity }`
 
-- `manualDiscount` is the extra discount the cashier gave on that line.
+- `unitDiscount` is the extra discount per unit the cashier gave; `manualDiscount` = `unitDiscount` × `quantity`.
 - `lineDiscount` = (`unitPrice` − `discountedUnitPrice`) × `quantity` + `manualDiscount`
 - `lineTotal` = `discountedUnitPrice` × `quantity` − `manualDiscount`
 
@@ -142,7 +142,7 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| POST | `/sales` | `{ items: [{ productId, quantity, discount? }], paymentMethod, amountPaid, billDiscount?, customerName?, customerPhone? }` | `201 SaleDto`. Prices are always taken from the server. `discount` is an optional amount off the whole line (≥ 0, at most the line amount after the product discount). `400` if stock is insufficient or `amountPaid < total` for cash. |
+| POST | `/sales` | `{ items: [{ productId, quantity, discount? }], paymentMethod, amountPaid, billDiscount?, customerName?, customerPhone? }` | `201 SaleDto`. Prices are always taken from the server. `discount` is an optional extra discount **per unit** (≥ 0, at most the product's discounted price); it is multiplied by `quantity`. `400` if stock is insufficient or `amountPaid < total` for cash. |
 | GET | `/sales?search=&from=&to=&cashierId=&page=&pageSize=` | | `Paged<SaleSummaryDto>` (`search` matches invoice number / customer; `from`/`to` are `yyyy-MM-dd` store-local dates; salesmen only see their own) |
 | GET | `/sales/{id}` | | `SaleDto` |
 | GET | `/sales/invoice/{invoiceNumber}` | | `SaleDto` |

@@ -73,7 +73,7 @@ public class Sale : AuditableEntity
 
         var sale = new Sale(invoiceNumber, register, cashierId, customerName, customerPhone);
         foreach (var line in lines)
-            sale.AddItem(line.Product, line.Quantity, line.Discount);
+            sale.AddItem(line.Product, line.Quantity, line.UnitDiscount);
 
         if (sale._items.Count == 0)
             throw new DomainException("A sale must contain at least one item.");
@@ -82,16 +82,16 @@ public class Sale : AuditableEntity
         return sale;
     }
 
-    private void AddItem(Product product, decimal quantity, decimal discount)
+    private void AddItem(Product product, decimal quantity, decimal unitDiscount)
     {
         if (!product.IsActive || product.IsDeleted)
             throw new DomainException($"'{product.Name}' is not available for sale.");
 
         var existing = _items.FirstOrDefault(i => i.ProductId == product.Id);
         if (existing is null)
-            _items.Add(new SaleItem(product, quantity, discount));
+            _items.Add(new SaleItem(product, quantity, unitDiscount));
         else
-            existing.Merge(quantity, discount);
+            existing.Merge(quantity, unitDiscount);
     }
 
     private void Checkout(PaymentMethod paymentMethod, decimal amountPaid, decimal billDiscount)
@@ -172,5 +172,5 @@ public class Sale : AuditableEntity
     }
 }
 
-/// <summary>A requested bill line: the product, quantity and any extra discount amount for the whole line.</summary>
-public readonly record struct SaleLine(Product Product, decimal Quantity, decimal Discount = 0);
+/// <summary>A requested bill line: the product, quantity and any extra discount per unit.</summary>
+public readonly record struct SaleLine(Product Product, decimal Quantity, decimal UnitDiscount = 0);

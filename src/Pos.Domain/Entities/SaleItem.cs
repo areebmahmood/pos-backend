@@ -10,7 +10,7 @@ public class SaleItem : BaseEntity
 {
     private SaleItem() { }
 
-    internal SaleItem(Product product, decimal quantity, decimal manualDiscount)
+    internal SaleItem(Product product, decimal quantity, decimal unitDiscount)
     {
         if (quantity <= 0)
             throw new DomainException($"Quantity for '{product.Name}' must be greater than zero.");
@@ -23,7 +23,7 @@ public class SaleItem : BaseEntity
         UnitPrice = product.SalePrice;
         DiscountedUnitPrice = product.EffectivePrice;
         UnitCost = product.CostPrice;
-        Recalculate(manualDiscount);
+        Recalculate(DiscountFor(unitDiscount, quantity));
     }
 
     public int SaleId { get; private set; }
@@ -41,7 +41,10 @@ public class SaleItem : BaseEntity
 
     public decimal UnitCost { get; private set; }
 
-    /// <summary>Extra discount the cashier gave on this line, on top of the product's discounted price.</summary>
+    /// <summary>Extra discount per unit the cashier gave, on top of the product's discounted price.</summary>
+    public decimal UnitDiscount { get; private set; }
+
+    /// <summary>The cashier's extra discount for the whole line (<see cref="UnitDiscount"/> × quantity).</summary>
     public decimal ManualDiscount { get; private set; }
 
     /// <summary>Total discount on the line: product discount plus <see cref="ManualDiscount"/>.</summary>
@@ -54,20 +57,29 @@ public class SaleItem : BaseEntity
     /// <summary>Price actually charged per unit after all line-level discounts.</summary>
     public decimal NetUnitPrice => Quantity == 0 ? 0 : LineTotal / Quantity;
 
-    internal void Merge(decimal quantity, decimal manualDiscount)
+    internal void Merge(decimal quantity, decimal unitDiscount)
     {
+        var addedDiscount = DiscountFor(unitDiscount, quantity);
         Quantity += quantity;
-        Recalculate(ManualDiscount + manualDiscount);
+        Recalculate(ManualDiscount + addedDiscount);
+    }
+
+    private decimal DiscountFor(decimal unitDiscount, decimal quantity)
+    {
+        Guard.NotNegative(unitDiscount, "Discount");
+        if (unitDiscount > DiscountedUnitPrice)
+            throw new DomainException($"Discount on '{ProductName}' cannot exceed its price ({DiscountedUnitPrice:0.00}).");
+
+        return Money.Round(unitDiscount * quantity);
     }
 
     private void Recalculate(decimal manualDiscount)
     {
-        manualDiscount = Money.Round(Guard.NotNegative(manualDiscount, "Line discount"));
         var discountedTotal = Money.Round(DiscountedUnitPrice * Quantity);
-        if (manualDiscount > discountedTotal)
-            throw new DomainException($"Discount on '{ProductName}' cannot exceed the line amount ({discountedTotal:0.00}).");
+        manualDiscount = Math.Min(manualDiscount, discountedTotal);
 
         ManualDiscount = manualDiscount;
+        UnitDiscount = Math.Round(manualDiscount / Quantity, 4, MidpointRounding.AwayFromZero);
         LineDiscount = Money.Round((UnitPrice - DiscountedUnitPrice) * Quantity + manualDiscount);
         LineTotal = discountedTotal - manualDiscount;
     }
