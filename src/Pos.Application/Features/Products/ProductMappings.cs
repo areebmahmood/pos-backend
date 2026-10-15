@@ -23,6 +23,8 @@ public static class ProductMappings
         p.ReorderLevel,
         p.StockQuantity <= p.ReorderLevel,
         p.IsActive,
+        p.Image != null,
+        p.Image != null ? p.Image.UpdatedAt : null,
         p.CreatedAt,
         p.UpdatedAt);
 }

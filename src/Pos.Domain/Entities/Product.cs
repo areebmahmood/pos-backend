@@ -30,6 +30,7 @@ public class Product : AuditableEntity, ISoftDeletable
     public string? Description { get; private set; }
     public int? CategoryId { get; private set; }
     public Category? Category { get; private set; }
+    public ProductImage? Image { get; private set; }
     public decimal CostPrice { get; private set; }
     public decimal SalePrice { get; private set; }
     public decimal? DiscountedPrice { get; private set; }

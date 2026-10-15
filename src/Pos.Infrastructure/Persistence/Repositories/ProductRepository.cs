@@ -39,4 +39,11 @@ internal sealed class ProductRepository(PosDbContext db) : Repository<Product>(d
 
     public Task<int> CountAsync(bool lowStockOnly, CancellationToken ct) =>
         Set.WhereIf(lowStockOnly, p => p.IsActive && p.StockQuantity <= p.ReorderLevel).CountAsync(ct);
+
+    public Task<ProductImage?> GetImageAsync(int productId, CancellationToken ct) =>
+        Set.Where(p => p.Id == productId).Select(p => p.Image).FirstOrDefaultAsync(ct);
+
+    public void AddImage(ProductImage image) => Db.ProductImages.Add(image);
+
+    public void RemoveImage(ProductImage image) => Db.ProductImages.Remove(image);
 }

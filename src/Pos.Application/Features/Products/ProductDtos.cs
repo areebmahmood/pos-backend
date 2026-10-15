@@ -18,8 +18,12 @@ public sealed record ProductDto(
     decimal ReorderLevel,
     bool IsLowStock,
     bool IsActive,
+    bool HasBarcodeImage,
+    DateTime? BarcodeImageUpdatedAt,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
+
+public sealed record ProductImageFile(byte[] Content, string ContentType);
 
 public sealed record CreateProductRequest(
     string Name,

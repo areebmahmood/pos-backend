@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
 using Pos.Application.Features.Products;
 using Pos.Domain.Common;
+using Pos.Domain.Entities;
+using Pos.Domain.Exceptions;
 
 namespace Pos.Api.Controllers;
 
@@ -37,6 +39,33 @@ public sealed class ProductsController(IProductService products) : ApiController
     [Authorize(Roles = Roles.Admin)]
     public Task<ProductDto> SetDiscount(int id, SetDiscountRequest request, CancellationToken ct) =>
         products.SetDiscountAsync(id, request, ct);
+
+    [HttpGet("{id:int}/barcode-image")]
+    public async Task<IActionResult> GetBarcodeImage(int id, CancellationToken ct)
+    {
+        var image = await products.GetBarcodeImageAsync(id, ct);
+        return File(image.Content, image.ContentType);
+    }
+
+    [HttpPut("{id:int}/barcode-image")]
+    [Authorize(Roles = Roles.Admin)]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(ProductImage.MaxBytes + 64 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = ProductImage.MaxBytes + 64 * 1024)]
+    public async Task<ProductDto> SetBarcodeImage(int id, IFormFile file, CancellationToken ct)
+    {
+        if (file.Length > ProductImage.MaxBytes)
+            throw new DomainException($"The image must be at most {ProductImage.MaxBytes / 1024} KB.");
+
+        using var buffer = new MemoryStream((int)file.Length);
+        await file.CopyToAsync(buffer, ct);
+        return await products.SetBarcodeImageAsync(id, buffer.ToArray(), ct);
+    }
+
+    [HttpDelete("{id:int}/barcode-image")]
+    [Authorize(Roles = Roles.Admin)]
+    public Task<ProductDto> RemoveBarcodeImage(int id, CancellationToken ct) =>
+        products.RemoveBarcodeImageAsync(id, ct);
 
     [HttpDelete("{id:int}")]
     [Authorize(Roles = Roles.Admin)]

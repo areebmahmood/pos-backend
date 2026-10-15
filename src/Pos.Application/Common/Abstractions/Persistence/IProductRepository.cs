@@ -20,4 +20,11 @@ public interface IProductRepository : IRepository<Product>
         ProductQuery query, Expression<Func<Product, TResult>> selector, CancellationToken ct);
 
     Task<int> CountAsync(bool lowStockOnly, CancellationToken ct);
+
+    /// <summary>The barcode-label image of a live product, tracked for update.</summary>
+    Task<ProductImage?> GetImageAsync(int productId, CancellationToken ct);
+
+    void AddImage(ProductImage image);
+
+    void RemoveImage(ProductImage image);
 }

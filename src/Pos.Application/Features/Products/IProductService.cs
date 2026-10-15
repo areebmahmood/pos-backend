@@ -17,4 +17,10 @@ public interface IProductService
     Task<ProductDto> SetDiscountAsync(int id, SetDiscountRequest request, CancellationToken ct);
 
     Task DeleteAsync(int id, CancellationToken ct);
+
+    Task<ProductImageFile> GetBarcodeImageAsync(int id, CancellationToken ct);
+
+    Task<ProductDto> SetBarcodeImageAsync(int id, byte[] content, CancellationToken ct);
+
+    Task<ProductDto> RemoveBarcodeImageAsync(int id, CancellationToken ct);
 }
