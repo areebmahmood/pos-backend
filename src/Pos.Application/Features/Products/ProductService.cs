@@ -86,6 +86,37 @@ public sealed class ProductService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    public async Task<ProductImageFile> GetBarcodeImageAsync(int id, CancellationToken ct)
+    {
+        var image = await products.GetImageAsync(id, ct)
+            ?? throw new NotFoundException($"Product {id} has no barcode image.");
+        return new ProductImageFile(image.Content, image.ContentType);
+    }
+
+    public async Task<ProductDto> SetBarcodeImageAsync(int id, byte[] content, CancellationToken ct)
+    {
+        await GetEntityAsync(id, ct);
+        var image = await products.GetImageAsync(id, ct);
+        if (image is null)
+            products.AddImage(new ProductImage(id, content, clock.UtcNow));
+        else
+            image.Replace(content, clock.UtcNow);
+
+        await unitOfWork.SaveChangesAsync(ct);
+        return await GetAsync(id, ct);
+    }
+
+    public async Task<ProductDto> RemoveBarcodeImageAsync(int id, CancellationToken ct)
+    {
+        await GetEntityAsync(id, ct);
+        if (await products.GetImageAsync(id, ct) is { } image)
+        {
+            products.RemoveImage(image);
+            await unitOfWork.SaveChangesAsync(ct);
+        }
+        return await GetAsync(id, ct);
+    }
+
     private async Task<Product> GetEntityAsync(int id, CancellationToken ct) =>
         await products.GetByIdAsync(id, ct) ?? throw NotFoundException.For("Product", id);
 

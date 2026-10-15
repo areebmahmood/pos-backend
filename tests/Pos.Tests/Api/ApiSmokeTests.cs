@@ -93,6 +93,41 @@ public sealed class ApiSmokeTests(PosApiFactory factory) : IClassFixture<PosApiF
         Assert.All(discounted!["items"]!.AsArray(), p => Assert.NotNull(p!["discountedPrice"]));
     }
 
+    [Fact]
+    public async Task Admin_can_upload_replace_and_remove_a_barcode_image()
+    {
+        var client = await LoginAsync("admin", "Admin@123");
+        var product = await client.GetFromJsonAsync<JsonObject>("/api/products/barcode/2000000000015");
+        var url = $"/api/products/{(int)product!["id"]!}/barcode-image";
+        Assert.False((bool)product["hasBarcodeImage"]!);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(url)).StatusCode);
+
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];
+        var upload = await client.PutAsync(url, ImageForm(png, "logo.png"));
+        Assert.Equal(HttpStatusCode.OK, upload.StatusCode);
+        var updated = await upload.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.True((bool)updated!["hasBarcodeImage"]!);
+        Assert.NotNull(updated["barcodeImageUpdatedAt"]);
+
+        var image = await client.GetAsync(url);
+        Assert.Equal("image/png", image.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(png, await image.Content.ReadAsByteArrayAsync());
+
+        var notAnImage = await client.PutAsync(url, ImageForm("hello"u8.ToArray(), "notes.png"));
+        Assert.Equal(HttpStatusCode.BadRequest, notAnImage.StatusCode);
+
+        var salesman = await LoginAsync("salesman", "Sales@123");
+        Assert.Equal(HttpStatusCode.OK, (await salesman.GetAsync(url)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await salesman.DeleteAsync(url)).StatusCode);
+
+        var removed = await client.DeleteAsync(url);
+        Assert.False((bool)(await removed.Content.ReadFromJsonAsync<JsonObject>())!["hasBarcodeImage"]!);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(url)).StatusCode);
+    }
+
+    private static MultipartFormDataContent ImageForm(byte[] content, string fileName) =>
+        new() { { new ByteArrayContent(content), "file", fileName } };
+
     private async Task<HttpClient> LoginAsync(string username, string password)
     {
         var client = factory.CreateClient();

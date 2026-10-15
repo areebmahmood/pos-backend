@@ -178,6 +178,29 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.ToTable("Products");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.ProductImage", b =>
+                {
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1048576)
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ProductId");
+
+                    b.ToTable("ProductImages");
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.RegisterSession", b =>
                 {
                     b.Property<int>("Id")
@@ -664,6 +687,15 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.ProductImage", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Product", null)
+                        .WithOne("Image")
+                        .HasForeignKey("Pos.Domain.Entities.ProductImage", "ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.RegisterSession", b =>
                 {
                     b.HasOne("Pos.Domain.Entities.User", null)
@@ -782,6 +814,11 @@ namespace Pos.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Pos.Domain.Entities.Category", b =>
                 {
                     b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.Product", b =>
+                {
+                    b.Navigation("Image");
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Sale", b =>

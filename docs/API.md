@@ -73,9 +73,11 @@ Response `200`:
   "costPrice": 280, "salePrice": 350, "discountedPrice": 320,
   "effectivePrice": 320, "discountPercent": 8.57,
   "stockQuantity": 40, "reorderLevel": 10, "isLowStock": false,
-  "isActive": true, "createdAt": "...", "updatedAt": "..." }
+  "isActive": true, "hasBarcodeImage": false, "barcodeImageUpdatedAt": null,
+  "createdAt": "...", "updatedAt": "..." }
 ```
 `effectivePrice` = `discountedPrice ?? salePrice` and is what a sale charges.
+`barcodeImageUpdatedAt` changes whenever the barcode image is replaced; use it to bust image caches.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -85,6 +87,9 @@ Response `200`:
 | POST *(Admin)* | `/products` | `{ name, barcode?, description?, categoryId?, costPrice, salePrice, discountedPrice?, stockQuantity, reorderLevel }` | `201 ProductDto`. Empty barcode ⇒ an EAN-13 is generated. |
 | PUT *(Admin)* | `/products/{id}` | `{ name, barcode?, description?, categoryId?, costPrice, salePrice, discountedPrice?, reorderLevel, isActive }` | `ProductDto` (stock changes only through adjustments) |
 | PUT *(Admin)* | `/products/{id}/discount` | `{ discountedPrice: number \| null }` | `ProductDto` (`null` removes the discount) |
+| GET | `/products/{id}/barcode-image` | | The image bytes with their `Content-Type` (`404` if the product has none) |
+| PUT *(Admin)* | `/products/{id}/barcode-image` | `multipart/form-data` with one file field `file` | `ProductDto`. PNG, JPEG, WebP or GIF (detected from the file contents), at most 1 MB. Replaces any existing image. |
+| DELETE *(Admin)* | `/products/{id}/barcode-image` | | `ProductDto` (removes the image; no-op if none) |
 | DELETE *(Admin)* | `/products/{id}` | | `204` (soft delete; history is kept) |
 
 ## Stock adjustments (quantity adjustment)
