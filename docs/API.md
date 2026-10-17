@@ -27,6 +27,9 @@ Enums are serialized as **strings**. Timestamps are ISO-8601 UTC (`2026-10-10T09
 | `SaleStatus` | `Completed`, `PartiallyReturned`, `Returned` |
 | `StockAdjustmentType` | `Initial`, `Manual`, `Sale`, `Return` |
 | `ReportPeriod` | `Daily`, `Weekly`, `Monthly`, `Yearly` |
+| `DiscountType` | `Percentage`, `Amount` |
+| `MessageKind` | `ThankYou`, `Promotion` |
+| `MessageStatus` | `Pending`, `Sent`, `Failed` |
 
 ## Auth
 
@@ -134,26 +137,29 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 `SaleDto`:
 ```json
 { "id": 10, "invoiceNumber": "INV-261010-000010", "registerSessionId": 7, "cashierName": "Ali",
-  "customerName": null, "customerPhone": null, "paymentMethod": "Cash",
-  "subtotal": 1050, "itemDiscount": 90, "billDiscount": 10, "total": 950,
+  "customerName": null, "customerPhone": null, "customerId": null, "paymentMethod": "Cash",
+  "subtotal": 1050, "itemDiscount": 90, "billDiscount": 10, "discountCode": null, "codeDiscount": 0, "total": 950,
   "amountPaid": 1000, "change": 50, "returnedAmount": 0, "status": "Completed",
   "createdAt": "...", "items": [ ... ] }
 ```
 - `subtotal` = Σ `unitPrice × quantity` (list prices)
 - `itemDiscount` = Σ `lineDiscount` (product discounted prices plus line discounts)
+- `billDiscount` = the cashier's bill discount + `codeDiscount`
+- `codeDiscount` is what `discountCode` took off; the code applies to the amount after item discounts and the cashier's bill discount
 - `total` = `subtotal − itemDiscount − billDiscount`
+- `customerId` is set when the bill has a valid phone number (see Customers)
 
 `SaleSummaryDto`: `{ id, invoiceNumber, cashierName, customerName, paymentMethod, total, itemCount, status, createdAt }`
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| POST | `/sales` | `{ items: [{ productId, quantity, discount? }], paymentMethod, amountPaid, billDiscount?, customerName?, customerPhone? }` | `201 SaleDto`. Prices are always taken from the server. `discount` is an optional extra discount **per unit** (≥ 0, at most the product's discounted price); it is multiplied by `quantity`. `400` if stock is insufficient or `amountPaid < total` for cash. |
+| POST | `/sales` | `{ items: [{ productId, quantity, discount? }], paymentMethod, amountPaid, billDiscount?, customerName?, customerPhone?, discountCode? }` | `201 SaleDto`. Prices are always taken from the server. `discount` is an optional extra discount **per unit** (≥ 0, at most the product's discounted price); it is multiplied by `quantity`. `400` if stock is insufficient, `amountPaid < total` for cash, or the discount code cannot be used (inactive, expired, limit reached, bill below its minimum); `404` for an unknown code. A valid `customerPhone` finds or creates the customer and, when WhatsApp is on, queues the thank-you message. |
 | GET | `/sales?search=&from=&to=&cashierId=&page=&pageSize=` | | `Paged<SaleSummaryDto>` (`search` matches invoice number / customer; `from`/`to` are `yyyy-MM-dd` store-local dates; salesmen only see their own) |
 | GET | `/sales/{id}` | | `SaleDto` |
 | GET | `/sales/invoice/{invoiceNumber}` | | `SaleDto` |
 | GET | `/sales/{id}/receipt` | | `ReceiptDto` |
 
-`ReceiptDto`: `{ store: StoreSettingsDto, sale: SaleDto, qrContent: string }`. `qrContent` is the text to encode into the receipt QR code.
+`ReceiptDto`: `{ store: StoreSettingsDto, sale: SaleDto, qrContent: string }`. `qrContent` is the text to encode into the receipt QR code: just the invoice number, so scanning it into the returns search finds the sale.
 
 ## Returns
 
@@ -214,16 +220,82 @@ Buckets: `Daily` → per hour, `Weekly`/`Monthly` → per day, `Yearly` → per 
   "recentSales": [SaleSummaryDto] }
 ```
 
+## Customers
+
+Customers are known by phone number, stored as international digits without the plus (`923001234567`). Any form is accepted (`0300-1234567`, `+92 300 1234567`, `3001234567`); local numbers get the store's default country code. A bill with a valid phone number finds or creates the customer automatically.
+
+`CustomerDto`: `{ id, name, phone, optedOut, purchaseCount, totalSpent, lastPurchaseAt, createdAt }` (`totalSpent` is net of returns; `optedOut` customers get no promotions).
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET *(Admin)* | `/customers?search=&optedOut=&page=&pageSize=` | | `Paged<CustomerDto>` (search matches name or phone; latest buyers first) |
+| GET *(Admin)* | `/customers/{id}` | | `CustomerDto` |
+| GET | `/customers/lookup?phone=` | | `200 { id, name, phone }` or `204` when unknown (used while billing) |
+| POST *(Admin)* | `/customers` | `{ name?, phone, optedOut? }` | `201 CustomerDto` (`409` if the phone exists) |
+| PUT *(Admin)* | `/customers/{id}` | `{ name?, phone, optedOut }` | `CustomerDto` |
+| DELETE *(Admin)* | `/customers/{id}` | | `204` (their sales are kept) |
+
+### WhatsApp promotions *(Admin)*
+
+`PromotionDto`: `{ id, message, createdBy, createdAt, recipientCount, sentCount, failedCount, pendingCount }`
+
+`OutgoingMessageDto`: `{ id, kind, phone, customerName, status, error, attempts, saleId, promotionId, createdAt, sentAt }`
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| POST | `/customers/promotions` | `{ message, customerIds? }` (omit or empty = every customer who has not opted out) | `201 PromotionDto`. Messages are queued and sent in the background. `400` when WhatsApp is off or has no promotion template. |
+| GET | `/customers/promotions?page=&pageSize=` | | `Paged<PromotionDto>` (newest first) |
+| GET | `/customers/messages?kind=&status=&promotionId=&page=&pageSize=` | | `Paged<OutgoingMessageDto>` (newest first; `error` says why a message failed) |
+
+Messages are WhatsApp **template** messages sent through the WhatsApp Business Cloud API. The templates are created and approved in Meta's WhatsApp Manager and must have these body variables:
+
+- thank-you: `{{1}}` customer name (or "Customer"), `{{2}}` invoice number, `{{3}}` bill total (e.g. `Rs 2,500`)
+- promotion: `{{1}}` customer name (or "Customer"), `{{2}}` the promotion text (line breaks become spaces)
+
+Temporary failures (rate limits, network, Meta server errors) are retried up to 3 times; other failures are marked `Failed` with Meta's error.
+
+## Discount codes
+
+`DiscountCodeDto`: `{ id, code, description, type, value, minimumBill, maximumDiscount, validFrom, validTo, usageLimit, usedCount, isActive, createdAt }`
+
+- `code` is stored upper-case (letters, digits, `-`, `_`); codes are matched case-insensitively.
+- `value` is a percent (1–100) for `Percentage`, otherwise an amount. `maximumDiscount` caps a percentage code.
+- `minimumBill` applies to the amount after item discounts and the cashier's bill discount. `validFrom`/`validTo` are inclusive store-local dates. `usedCount` counts sales that used the code.
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET *(Admin)* | `/discount-codes?search=&page=&pageSize=` | | `Paged<DiscountCodeDto>` |
+| GET *(Admin)* | `/discount-codes/{id}` | | `DiscountCodeDto` |
+| GET | `/discount-codes/check?code=&amount=` | | `{ code, description, type, value, minimumBill, maximumDiscount, discount }` where `discount` is what the code takes off `amount`; `400` with the reason when it cannot be used, `404` when unknown |
+| POST *(Admin)* | `/discount-codes` | `{ code, description?, type, value, minimumBill?, maximumDiscount?, validFrom?, validTo?, usageLimit?, isActive }` | `201 DiscountCodeDto` (`409` if the code exists) |
+| PUT *(Admin)* | `/discount-codes/{id}` | same as POST | `DiscountCodeDto` |
+| DELETE *(Admin)* | `/discount-codes/{id}` | | `204` (sales keep the code text) |
+
 ## Store settings
 
-`StoreSettingsDto`: `{ storeName, address, phone, receiptFooter, urduInstructions, receiptQrBaseUrl, currencySymbol, timeZoneId }`
+`StoreSettingsDto`: `{ storeName, address, phone, receiptFooter, urduInstructions, whatsAppGroupCaption, whatsAppGroupQrUpdatedAt, currencySymbol, timeZoneId }`
 
-`urduInstructions` is multi-line Urdu text (right-to-left) printed at the bottom of every receipt. `timeZoneId` is read-only and comes from the `Store:TimeZoneId` server setting.
+`urduInstructions` is multi-line Urdu text (right-to-left) printed at the bottom of every receipt. `whatsAppGroupQrUpdatedAt` is `null` when no WhatsApp group QR code is uploaded, otherwise it changes whenever the image is replaced; the receipt prints that image with `whatsAppGroupCaption` under it. `timeZoneId` is read-only and comes from the `Store:TimeZoneId` server setting.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
 | GET | `/settings` | | `StoreSettingsDto` (any signed-in user) |
-| PUT *(Admin)* | `/settings` | `{ storeName, address?, phone?, receiptFooter?, urduInstructions?, receiptQrBaseUrl?, currencySymbol }` | `StoreSettingsDto` |
+| PUT *(Admin)* | `/settings` | `{ storeName, address?, phone?, receiptFooter?, urduInstructions?, whatsAppGroupCaption?, currencySymbol }` | `StoreSettingsDto` |
+| GET | `/settings/whatsapp-group-qr` | | The image bytes with their `Content-Type` (`404` if none) |
+| PUT *(Admin)* | `/settings/whatsapp-group-qr` | `multipart/form-data` with one file field `file` | `StoreSettingsDto`. PNG, JPEG, WebP or GIF, at most 1 MB. |
+| DELETE *(Admin)* | `/settings/whatsapp-group-qr` | | `StoreSettingsDto` |
+
+### WhatsApp messaging *(Admin)*
+
+`WhatsAppSettingsDto`: `{ enabled, phoneNumberId, hasAccessToken, thankYouTemplate, promotionTemplate, templateLanguage, defaultCountryCode }`. The access token is never returned.
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET | `/settings/whatsapp` | | `WhatsAppSettingsDto` |
+| PUT | `/settings/whatsapp` | `{ enabled, phoneNumberId?, accessToken?, thankYouTemplate?, promotionTemplate?, templateLanguage, defaultCountryCode }` | `WhatsAppSettingsDto`. Omit or empty `accessToken` keeps the saved one. `enabled` needs a phone number ID and token. No thank-you template = no thank-you messages. |
+| POST | `/settings/whatsapp/test` | `{ phone }` | `{ success, template, error }`. Sends one message now with the thank-you template (sample values), else the promotion template, else Meta's `hello_world`. |
+
+The Graph API address can be changed with the `WhatsApp:GraphApiBaseUrl` server setting (default `https://graph.facebook.com/v23.0/`).
 
 ## Health
 `GET /health` → `200 Healthy` (anonymous).

@@ -46,6 +46,8 @@ public sealed class PosTestHost : IAsyncDisposable
 
         services.AddSingleton(CurrentUser);
         services.AddSingleton<ICurrentUser>(CurrentUser);
+        services.AddSingleton(WhatsApp);
+        services.AddSingleton<IWhatsAppClient>(WhatsApp);
         services.AddSingleton(Clock);
         services.AddSingleton<IDateTimeProvider>(Clock);
         services.AddScoped<AuditableEntityInterceptor>();
@@ -65,6 +67,8 @@ public sealed class PosTestHost : IAsyncDisposable
     public TestCurrentUser CurrentUser { get; } = new();
 
     public TestClock Clock { get; } = new();
+
+    public FakeWhatsAppClient WhatsApp { get; } = new();
 
     /// <summary>Resolves a service in a fresh scope, like a new HTTP request.</summary>
     public async Task<TResult> RunAsync<TService, TResult>(Func<TService, Task<TResult>> action) where TService : notnull

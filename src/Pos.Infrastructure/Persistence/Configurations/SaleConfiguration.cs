@@ -11,6 +11,7 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.Property(s => s.InvoiceNumber).HasMaxLength(Sale.InvoiceNumberMaxLength).IsRequired();
         builder.Property(s => s.CustomerName).HasMaxLength(Sale.CustomerNameMaxLength);
         builder.Property(s => s.CustomerPhone).HasMaxLength(Sale.CustomerPhoneMaxLength);
+        builder.Property(s => s.DiscountCode).HasMaxLength(DiscountCode.CodeMaxLength);
         builder.Ignore(s => s.NetBeforeBillDiscount);
 
         builder.HasOne(s => s.RegisterSession).WithMany().HasForeignKey(s => s.RegisterSessionId).OnDelete(DeleteBehavior.Restrict);
@@ -26,6 +27,8 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.HasIndex(s => s.CreatedAt);
         builder.HasIndex(s => new { s.CashierId, s.CreatedAt });
         builder.HasIndex(s => s.RegisterSessionId);
+
+        builder.HasOne<DiscountCode>().WithMany().HasForeignKey(s => s.DiscountCodeId).OnDelete(DeleteBehavior.SetNull);
     }
 }
 
