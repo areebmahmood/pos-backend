@@ -25,10 +25,13 @@ public sealed record SaleDto(
     string CashierName,
     string? CustomerName,
     string? CustomerPhone,
+    int? CustomerId,
     PaymentMethod PaymentMethod,
     decimal Subtotal,
     decimal ItemDiscount,
     decimal BillDiscount,
+    string? DiscountCode,
+    decimal CodeDiscount,
     decimal Total,
     decimal AmountPaid,
     decimal Change,
@@ -59,7 +62,8 @@ public sealed record CreateSaleRequest(
     decimal AmountPaid,
     decimal BillDiscount,
     string? CustomerName,
-    string? CustomerPhone);
+    string? CustomerPhone,
+    string? DiscountCode = null);
 
 public sealed record SaleQuery : PageRequest
 {

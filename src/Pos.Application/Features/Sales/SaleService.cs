@@ -4,8 +4,10 @@ using Pos.Application.Common.Abstractions.Services;
 using Pos.Application.Common.Exceptions;
 using Pos.Application.Common.Models;
 using Pos.Application.Common.Validation;
+using Pos.Application.Features.Messaging;
 using Pos.Application.Features.Registers;
 using Pos.Application.Features.Settings;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 
@@ -17,6 +19,11 @@ public sealed class SaleService(
     IRegisterSessionRepository registers,
     IStockAdjustmentRepository stockAdjustments,
     IStoreSettingsRepository settings,
+    ICustomerRepository customers,
+    IDiscountCodeRepository discountCodes,
+    IMessageRepository messages,
+    IMessageDispatchSignal dispatchSignal,
+    IDateTimeProvider clock,
     IUnitOfWork unitOfWork,
     IInvoiceNumberGenerator invoiceNumbers,
     ICurrentUser currentUser,
@@ -36,6 +43,10 @@ public sealed class SaleService(
             if (missing.Count > 0)
                 throw new NotFoundException($"Products not found: {string.Join(", ", missing)}.");
 
+            var store = await settings.GetAsync(token);
+            var customer = await FindOrCreateCustomerAsync(request, store, token);
+            var discountCode = await FindDiscountCodeAsync(request.DiscountCode, token);
+
             var sale = Sale.Create(
                 invoiceNumbers.Next(),
                 register,
@@ -45,7 +56,10 @@ public sealed class SaleService(
                 request.AmountPaid,
                 request.BillDiscount,
                 request.CustomerName,
-                request.CustomerPhone);
+                request.CustomerPhone,
+                customer,
+                discountCode,
+                storeClock.Today);
 
             var stockBefore = sale.Items.ToDictionary(
                 item => item.ProductId,
@@ -62,10 +76,14 @@ public sealed class SaleService(
                     stockBefore[item.ProductId], currentUser.UserId, $"Sale {sale.InvoiceNumber}", sale.Id));
             }
 
+            if (WhatsAppTemplates.ForSale(store, sale, clock.UtcNow) is { } thankYou)
+                messages.Add(thankYou);
+
             await unitOfWork.SaveChangesAsync(token);
             return sale.Id;
         }, ct);
 
+        dispatchSignal.Notify();
         return await GetAsync(saleId, ct);
     }
 
@@ -86,16 +104,41 @@ public sealed class SaleService(
     public async Task<ReceiptDto> GetReceiptAsync(int id, CancellationToken ct)
     {
         var sale = await GetAsync(id, ct);
-        var store = (await settings.GetAsync(ct)).ToDto(storeClock.TimeZoneId);
-        return new ReceiptDto(store, sale, BuildQrContent(store, sale));
+        var entity = await settings.GetAsync(ct);
+        var store = entity.ToDto(storeClock.TimeZoneId, await settings.GetImageUpdatedAtAsync(StoreImage.WhatsAppGroupQr, ct));
+        return new ReceiptDto(store, sale, BuildQrContent(sale));
     }
 
-    private string BuildQrContent(StoreSettingsDto store, SaleDto sale)
+    private async Task<Customer?> FindOrCreateCustomerAsync(CreateSaleRequest request, StoreSettings store, CancellationToken ct)
     {
-        if (!string.IsNullOrWhiteSpace(store.ReceiptQrBaseUrl))
-            return store.ReceiptQrBaseUrl.TrimEnd() + Uri.EscapeDataString(sale.InvoiceNumber);
+        var phone = PhoneNumber.Normalize(request.CustomerPhone, store.DefaultCountryCode);
+        if (phone is null)
+            return null;
 
-        var local = storeClock.ToLocal(sale.CreatedAt);
-        return $"{store.StoreName}|INV:{sale.InvoiceNumber}|TOTAL:{sale.Total:0.00}|DATE:{local:yyyy-MM-dd HH:mm}";
+        var customer = await customers.GetByPhoneAsync(phone, ct);
+        if (customer is null)
+        {
+            customer = new Customer(request.CustomerName, phone);
+            customers.Add(customer);
+        }
+        else
+        {
+            customer.RememberName(request.CustomerName);
+        }
+
+        return customer;
     }
+
+    private async Task<DiscountCode?> FindDiscountCodeAsync(string? code, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return null;
+
+        var normalized = DiscountCode.NormalizeCode(code);
+        return await discountCodes.GetByCodeAsync(normalized, ct)
+            ?? throw new NotFoundException($"Discount code '{normalized}' does not exist.");
+    }
+
+    /// <summary>The receipt QR holds only the invoice number, so scanning it fills the returns search.</summary>
+    private static string BuildQrContent(SaleDto sale) => sale.InvoiceNumber;
 }

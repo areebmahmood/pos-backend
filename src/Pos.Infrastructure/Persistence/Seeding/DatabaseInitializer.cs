@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pos.Application.Common.Abstractions.Services;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 
@@ -24,6 +25,49 @@ public sealed class DatabaseInitializer(
         }
 
         await SeedAsync(ct);
+        await LinkSalesToCustomersAsync(ct);
+    }
+
+    /// <summary>
+    /// Creates customer records for bills that have a phone number but no customer yet
+    /// (bills made before customers existed), so they show on the customers page.
+    /// </summary>
+    private async Task LinkSalesToCustomersAsync(CancellationToken ct)
+    {
+        var unlinked = await db.Sales
+            .Where(s => s.CustomerId == null && s.CustomerPhone != null)
+            .OrderBy(s => s.Id)
+            .ToListAsync(ct);
+        if (unlinked.Count == 0)
+            return;
+
+        var countryCode = (await db.StoreSettings.AsNoTracking().FirstAsync(ct)).DefaultCountryCode;
+        var customers = await db.Customers.ToDictionaryAsync(c => c.Phone, ct);
+        var linked = 0;
+        foreach (var sale in unlinked)
+        {
+            var phone = PhoneNumber.Normalize(sale.CustomerPhone, countryCode);
+            if (phone is null)
+                continue;
+
+            if (!customers.TryGetValue(phone, out var customer))
+            {
+                customer = new Customer(sale.CustomerName, phone);
+                db.Customers.Add(customer);
+                customers[phone] = customer;
+            }
+            else
+            {
+                customer.RememberName(sale.CustomerName);
+            }
+
+            sale.LinkCustomer(customer);
+            linked++;
+        }
+
+        await db.SaveChangesAsync(ct);
+        if (linked > 0)
+            logger.LogInformation("Linked {Count} earlier sales to customer records", linked);
     }
 
     private async Task SeedAsync(CancellationToken ct)

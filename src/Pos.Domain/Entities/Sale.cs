@@ -35,6 +35,16 @@ public class Sale : AuditableEntity
     public User Cashier { get; private set; } = default!;
     public string? CustomerName { get; private set; }
     public string? CustomerPhone { get; private set; }
+    public int? CustomerId { get; private set; }
+    public Customer? Customer { get; private set; }
+
+    /// <summary>The discount code used on this bill, as typed at the time of sale.</summary>
+    public string? DiscountCode { get; private set; }
+    public int? DiscountCodeId { get; private set; }
+
+    /// <summary>The part of <see cref="BillDiscount"/> that came from <see cref="DiscountCode"/>.</summary>
+    public decimal CodeDiscount { get; private set; }
+
     public PaymentMethod PaymentMethod { get; private set; }
 
     /// <summary>Sum of list prices.</summary>
@@ -43,7 +53,7 @@ public class Sale : AuditableEntity
     /// <summary>Discount coming from product discounted prices.</summary>
     public decimal ItemDiscount { get; private set; }
 
-    /// <summary>Extra discount applied to the whole bill.</summary>
+    /// <summary>Discount on the whole bill: the cashier's bill discount plus any <see cref="CodeDiscount"/>.</summary>
     public decimal BillDiscount { get; private set; }
 
     public decimal Total { get; private set; }
@@ -67,7 +77,10 @@ public class Sale : AuditableEntity
         decimal amountPaid,
         decimal billDiscount,
         string? customerName,
-        string? customerPhone)
+        string? customerPhone,
+        Customer? customer = null,
+        DiscountCode? discountCode = null,
+        DateOnly? today = null)
     {
         register.EnsureOpen();
 
@@ -78,7 +91,10 @@ public class Sale : AuditableEntity
         if (sale._items.Count == 0)
             throw new DomainException("A sale must contain at least one item.");
 
-        sale.Checkout(paymentMethod, amountPaid, billDiscount);
+        if (customer is not null)
+            sale.LinkCustomer(customer);
+
+        sale.Checkout(paymentMethod, amountPaid, billDiscount, discountCode, today);
         return sale;
     }
 
@@ -94,7 +110,16 @@ public class Sale : AuditableEntity
             existing.Merge(quantity, unitDiscount);
     }
 
-    private void Checkout(PaymentMethod paymentMethod, decimal amountPaid, decimal billDiscount)
+    /// <summary>Links the bill to a customer record (also used to backfill older sales).</summary>
+    public void LinkCustomer(Customer customer)
+    {
+        Customer = customer;
+        if (customer.Id != 0)
+            CustomerId = customer.Id; // A new customer's key is filled in when it is saved.
+    }
+
+    private void Checkout(
+        PaymentMethod paymentMethod, decimal amountPaid, decimal billDiscount, DiscountCode? discountCode, DateOnly? today)
     {
         Subtotal = Money.Round(_items.Sum(i => i.UnitPrice * i.Quantity));
         ItemDiscount = Money.Round(_items.Sum(i => i.LineDiscount));
@@ -103,7 +128,18 @@ public class Sale : AuditableEntity
         if (billDiscount > NetBeforeBillDiscount)
             throw new DomainException("Bill discount cannot exceed the bill amount.");
 
-        BillDiscount = billDiscount;
+        if (discountCode is not null)
+        {
+            // The code applies to the amount after item discounts and the cashier's bill discount.
+            var amount = NetBeforeBillDiscount - billDiscount;
+            discountCode.EnsureUsable(today ?? DateOnly.FromDateTime(DateTime.UtcNow), amount);
+            CodeDiscount = discountCode.DiscountFor(amount);
+            DiscountCode = discountCode.Code;
+            DiscountCodeId = discountCode.Id;
+            discountCode.RegisterUse();
+        }
+
+        BillDiscount = billDiscount + CodeDiscount;
         Total = Money.Round(NetBeforeBillDiscount - BillDiscount);
         PaymentMethod = paymentMethod;
 

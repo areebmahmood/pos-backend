@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Pos.Application.Common.Abstractions.Persistence;
 using Pos.Application.Common.Abstractions.Services;
+using Pos.Infrastructure.Messaging;
 using Pos.Infrastructure.Persistence;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Queries;
@@ -21,8 +23,11 @@ public static class DependencyInjection
         services.AddOptions<StoreOptions>().Bind(configuration.GetSection(StoreOptions.SectionName));
         services.AddOptions<SeedOptions>().Bind(configuration.GetSection(SeedOptions.SectionName));
 
+        services.AddOptions<WhatsAppOptions>().Bind(configuration.GetSection(WhatsAppOptions.SectionName));
+
         services.AddPersistence(configuration);
         services.AddCoreServices();
+        services.AddWhatsApp();
         return services;
     }
 
@@ -59,6 +64,9 @@ public static class DependencyInjection
         services.AddScoped<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<IStoreSettingsRepository, StoreSettingsRepository>();
         services.AddScoped<IReportQueries, ReportQueries>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<DatabaseInitializer>();
         return services;
     }
@@ -73,6 +81,20 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddSingleton<IInvoiceNumberGenerator, InvoiceNumberGenerator>();
         services.AddScoped<IBarcodeGenerator, Ean13BarcodeGenerator>();
+        services.AddSingleton<MessageDispatchSignal>();
+        services.AddSingleton<IMessageDispatchSignal>(sp => sp.GetRequiredService<MessageDispatchSignal>());
         return services;
+    }
+
+    /// <summary>The WhatsApp Cloud API client and the background worker that sends queued messages.</summary>
+    private static void AddWhatsApp(this IServiceCollection services)
+    {
+        services.AddHttpClient<IWhatsAppClient, WhatsAppCloudClient>((sp, http) =>
+        {
+            var options = sp.GetRequiredService<IOptions<WhatsAppOptions>>().Value;
+            http.BaseAddress = new Uri(options.GraphApiBaseUrl.TrimEnd('/') + "/");
+            http.Timeout = TimeSpan.FromSeconds(20);
+        });
+        services.AddHostedService<MessageDispatcher>();
     }
 }

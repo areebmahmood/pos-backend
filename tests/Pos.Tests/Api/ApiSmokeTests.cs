@@ -60,8 +60,26 @@ public sealed class ApiSmokeTests(PosApiFactory factory) : IClassFixture<PosApiF
         Assert.Equal(640m, (decimal)saleJson["total"]!);
 
         var receipt = await client.GetFromJsonAsync<JsonObject>($"/api/sales/{(int)saleJson["id"]!}/receipt");
-        Assert.Contains((string)saleJson["invoiceNumber"]!, (string)receipt!["qrContent"]!);
+        Assert.Equal((string)saleJson["invoiceNumber"]!, (string)receipt!["qrContent"]!);
         Assert.False(string.IsNullOrEmpty((string?)receipt["store"]!["urduInstructions"]));
+    }
+
+    [Fact]
+    public async Task Salesman_can_check_discount_codes_and_look_up_customers_but_not_manage_them()
+    {
+        var admin = await LoginAsync("admin", "Admin@123");
+        var created = await admin.PostAsJsonAsync("/api/discount-codes", new { code = "smoke10", type = "Percentage", value = 10 });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/settings/whatsapp")).StatusCode);
+
+        var client = await LoginAsync("salesman", "Sales@123");
+        var check = await client.GetFromJsonAsync<JsonObject>("/api/discount-codes/check?code=SMOKE10&amount=500");
+        Assert.Equal(50m, (decimal)check!["discount"]!);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync("/api/customers/lookup?phone=03001234567")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/customers")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/discount-codes")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/settings/whatsapp")).StatusCode);
     }
 
     [Fact]

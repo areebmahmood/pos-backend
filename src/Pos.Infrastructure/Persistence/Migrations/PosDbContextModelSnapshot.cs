@@ -53,6 +53,103 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.Customer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("OptedOut")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("Phone")
+                        .IsUnique();
+
+                    b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.DiscountCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("MaximumDiscount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MinimumBill")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UsageLimit")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UsedCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("ValidFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ValidTo")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("DiscountCodes");
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.Expense", b =>
                 {
                     b.Property<int>("Id")
@@ -99,6 +196,80 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.HasIndex("RegisterSessionId");
 
                     b.ToTable("Expenses");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.OutgoingMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<int?>("PromotionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SaleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TemplateName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("PromotionId");
+
+                    b.HasIndex("SaleId");
+
+                    b.HasIndex("Status", "Id");
+
+                    b.ToTable("OutgoingMessages");
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Product", b =>
@@ -201,6 +372,40 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductImages");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.Promotion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("RecipientCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CreatedById");
+
+                    b.ToTable("Promotions");
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.RegisterSession", b =>
                 {
                     b.Property<int>("Id")
@@ -289,8 +494,15 @@ namespace Pos.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal>("CodeDiscount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("int");
 
                     b.Property<string>("CustomerName")
                         .HasMaxLength(100)
@@ -299,6 +511,13 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.Property<string>("CustomerPhone")
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("DiscountCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("DiscountCodeId")
+                        .HasColumnType("int");
 
                     b.Property<string>("InvoiceNumber")
                         .IsRequired()
@@ -336,6 +555,10 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("DiscountCodeId");
 
                     b.HasIndex("InvoiceNumber")
                         .IsUnique();
@@ -566,6 +789,30 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.ToTable("StockAdjustments");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.StoreImage", b =>
+                {
+                    b.Property<string>("Kind")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1048576)
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Kind");
+
+                    b.ToTable("StoreImages");
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.StoreSettings", b =>
                 {
                     b.Property<int>("Id")
@@ -583,6 +830,13 @@ namespace Pos.Infrastructure.Persistence.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<string>("DefaultCountryCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasDefaultValue("92");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -590,10 +844,6 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.Property<string>("ReceiptFooter")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("ReceiptQrBaseUrl")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("StoreName")
                         .IsRequired()
@@ -606,6 +856,36 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.Property<string>("UrduInstructions")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("WhatsAppAccessToken")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("WhatsAppEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("WhatsAppGroupCaption")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("WhatsAppPhoneNumberId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("WhatsAppPromotionTemplate")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("WhatsAppTemplateLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)")
+                        .HasDefaultValue("en");
+
+                    b.Property<string>("WhatsAppThankYouTemplate")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -677,6 +957,26 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.Navigation("RegisterSession");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.OutgoingMessage", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Pos.Domain.Entities.Promotion", null)
+                        .WithMany("Messages")
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Pos.Domain.Entities.Sale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Customer");
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.Product", b =>
                 {
                     b.HasOne("Pos.Domain.Entities.Category", "Category")
@@ -694,6 +994,17 @@ namespace Pos.Infrastructure.Persistence.Migrations
                         .HasForeignKey("Pos.Domain.Entities.ProductImage", "ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.Promotion", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.RegisterSession", b =>
@@ -720,6 +1031,16 @@ namespace Pos.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Pos.Domain.Entities.Customer", "Customer")
+                        .WithMany("Sales")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Pos.Domain.Entities.DiscountCode", null)
+                        .WithMany()
+                        .HasForeignKey("DiscountCodeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Pos.Domain.Entities.RegisterSession", "RegisterSession")
                         .WithMany()
                         .HasForeignKey("RegisterSessionId")
@@ -727,6 +1048,8 @@ namespace Pos.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Cashier");
+
+                    b.Navigation("Customer");
 
                     b.Navigation("RegisterSession");
                 });
@@ -816,9 +1139,19 @@ namespace Pos.Infrastructure.Persistence.Migrations
                     b.Navigation("Products");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.Customer", b =>
+                {
+                    b.Navigation("Sales");
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.Product", b =>
                 {
                     b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.Promotion", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Sale", b =>
