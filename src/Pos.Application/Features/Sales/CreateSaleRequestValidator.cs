@@ -23,5 +23,6 @@ public sealed class CreateSaleRequestValidator : AbstractValidator<CreateSaleReq
         RuleFor(x => x.BillDiscount).Money();
         RuleFor(x => x.CustomerName).MaximumLength(Sale.CustomerNameMaxLength);
         RuleFor(x => x.CustomerPhone).MaximumLength(Sale.CustomerPhoneMaxLength);
+        RuleFor(x => x.DiscountCode).MaximumLength(DiscountCode.CodeMaxLength);
     }
 }

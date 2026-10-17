@@ -17,4 +17,14 @@ internal sealed class StoreSettingsRepository(PosDbContext db) : IStoreSettingsR
         await db.SaveChangesAsync(ct);
         return settings;
     }
+
+    public Task<StoreImage?> GetImageAsync(string kind, CancellationToken ct) =>
+        db.StoreImages.FirstOrDefaultAsync(i => i.Kind == kind, ct);
+
+    public Task<DateTime?> GetImageUpdatedAtAsync(string kind, CancellationToken ct) =>
+        db.StoreImages.AsNoTracking().Where(i => i.Kind == kind).Select(i => (DateTime?)i.UpdatedAt).FirstOrDefaultAsync(ct);
+
+    public void AddImage(StoreImage image) => db.StoreImages.Add(image);
+
+    public void RemoveImage(StoreImage image) => db.StoreImages.Remove(image);
 }

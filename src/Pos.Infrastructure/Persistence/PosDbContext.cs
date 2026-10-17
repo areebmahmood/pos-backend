@@ -17,6 +17,11 @@ public class PosDbContext(DbContextOptions<PosDbContext> options) : DbContext(op
     public DbSet<SaleReturnItem> SaleReturnItems => Set<SaleReturnItem>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<StoreSettings> StoreSettings => Set<StoreSettings>();
+    public DbSet<StoreImage> StoreImages => Set<StoreImage>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<DiscountCode> DiscountCodes => Set<DiscountCode>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<OutgoingMessage> OutgoingMessages => Set<OutgoingMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
