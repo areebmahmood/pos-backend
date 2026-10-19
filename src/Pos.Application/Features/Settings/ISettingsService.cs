@@ -6,11 +6,12 @@ public interface ISettingsService
 
     Task<StoreSettingsDto> UpdateAsync(UpdateStoreSettingsRequest request, CancellationToken ct);
 
-    Task<StoreImageFile> GetWhatsAppGroupQrAsync(CancellationToken ct);
+    /// <param name="kind">One of <see cref="Pos.Domain.Entities.StoreImage.Kinds"/>.</param>
+    Task<StoreImageFile> GetImageAsync(string kind, CancellationToken ct);
 
-    Task<StoreSettingsDto> SetWhatsAppGroupQrAsync(byte[] content, CancellationToken ct);
+    Task<StoreSettingsDto> SetImageAsync(string kind, byte[] content, CancellationToken ct);
 
-    Task<StoreSettingsDto> RemoveWhatsAppGroupQrAsync(CancellationToken ct);
+    Task<StoreSettingsDto> RemoveImageAsync(string kind, CancellationToken ct);
 
     Task<WhatsAppSettingsDto> GetWhatsAppAsync(CancellationToken ct);
 

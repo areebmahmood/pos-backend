@@ -18,31 +18,34 @@ public sealed class SettingsController(ISettingsService settings) : ApiControlle
     public Task<StoreSettingsDto> Update(UpdateStoreSettingsRequest request, CancellationToken ct) =>
         settings.UpdateAsync(request, ct);
 
-    [HttpGet("whatsapp-group-qr")]
-    public async Task<IActionResult> GetWhatsAppGroupQr(CancellationToken ct)
+    // Uploaded store images: store-logo, receipt-logo and whatsapp-group-qr (see StoreImage.Kinds).
+    private const string ImageRoute = "{kind:regex(^(store-logo|receipt-logo|whatsapp-group-qr)$)}";
+
+    [HttpGet(ImageRoute)]
+    public async Task<IActionResult> GetImage(string kind, CancellationToken ct)
     {
-        var image = await settings.GetWhatsAppGroupQrAsync(ct);
+        var image = await settings.GetImageAsync(kind, ct);
         return File(image.Content, image.ContentType);
     }
 
-    [HttpPut("whatsapp-group-qr")]
+    [HttpPut(ImageRoute)]
     [Authorize(Roles = Roles.Admin)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(ProductImage.MaxBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = ProductImage.MaxBytes + 64 * 1024)]
-    public async Task<StoreSettingsDto> SetWhatsAppGroupQr(IFormFile file, CancellationToken ct)
+    public async Task<StoreSettingsDto> SetImage(string kind, IFormFile file, CancellationToken ct)
     {
         if (file.Length > ProductImage.MaxBytes)
             throw new DomainException($"The image must be at most {ProductImage.MaxBytes / 1024} KB.");
 
         using var buffer = new MemoryStream((int)file.Length);
         await file.CopyToAsync(buffer, ct);
-        return await settings.SetWhatsAppGroupQrAsync(buffer.ToArray(), ct);
+        return await settings.SetImageAsync(kind, buffer.ToArray(), ct);
     }
 
-    [HttpDelete("whatsapp-group-qr")]
+    [HttpDelete(ImageRoute)]
     [Authorize(Roles = Roles.Admin)]
-    public Task<StoreSettingsDto> RemoveWhatsAppGroupQr(CancellationToken ct) => settings.RemoveWhatsAppGroupQrAsync(ct);
+    public Task<StoreSettingsDto> RemoveImage(string kind, CancellationToken ct) => settings.RemoveImageAsync(kind, ct);
 
     [HttpGet("whatsapp")]
     [Authorize(Roles = Roles.Admin)]

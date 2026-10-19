@@ -105,7 +105,7 @@ public sealed class SaleService(
     {
         var sale = await GetAsync(id, ct);
         var entity = await settings.GetAsync(ct);
-        var store = entity.ToDto(storeClock.TimeZoneId, await settings.GetImageUpdatedAtAsync(StoreImage.WhatsAppGroupQr, ct));
+        var store = entity.ToDto(storeClock.TimeZoneId, await settings.GetImageVersionsAsync(ct));
         return new ReceiptDto(store, sale, BuildQrContent(sale));
     }
 
