@@ -24,7 +24,8 @@ internal sealed class ReportQueries(PosDbContext db) : IReportQueries
                 s.ItemDiscount,
                 s.BillDiscount,
                 s.Total,
-                s.PaymentMethod
+                s.PaymentMethod,
+                s.OnlinePaymentType
             })
             .GroupBy(s => new { s.Local.Year, s.Local.Month, s.Local.Day, s.Local.Hour })
             .Select(g => new
@@ -39,14 +40,17 @@ internal sealed class ReportQueries(PosDbContext db) : IReportQueries
                 BillDiscount = g.Sum(s => s.BillDiscount),
                 Total = g.Sum(s => s.Total),
                 Cash = g.Sum(s => s.PaymentMethod == PaymentMethod.Cash ? s.Total : 0),
-                Card = g.Sum(s => s.PaymentMethod == PaymentMethod.Card ? s.Total : 0)
+                Card = g.Sum(s => s.PaymentMethod == PaymentMethod.Card ? s.Total : 0),
+                JazzCash = g.Sum(s => s.PaymentMethod == PaymentMethod.Online && s.OnlinePaymentType == OnlinePaymentType.JazzCash ? s.Total : 0),
+                EasyPaisa = g.Sum(s => s.PaymentMethod == PaymentMethod.Online && s.OnlinePaymentType == OnlinePaymentType.EasyPaisa ? s.Total : 0),
+                BankTransfer = g.Sum(s => s.PaymentMethod == PaymentMethod.Online && s.OnlinePaymentType == OnlinePaymentType.BankTransfer ? s.Total : 0)
             })
             .ToListAsync(ct);
 
         return rows
             .Select(r => new SalesHourAggregate(
                 new DateTime(r.Year, r.Month, r.Day, r.Hour, 0, 0),
-                r.Count, r.Subtotal, r.ItemDiscount, r.BillDiscount, r.Total, r.Cash, r.Card))
+                r.Count, r.Subtotal, r.ItemDiscount, r.BillDiscount, r.Total, r.Cash, r.Card, r.JazzCash, r.EasyPaisa, r.BankTransfer))
             .OrderBy(r => r.LocalHour)
             .ToList();
     }

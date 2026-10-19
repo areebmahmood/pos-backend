@@ -26,8 +26,9 @@ public sealed record RegisterTotals(
     int SaleCount,
     decimal CashSales,
     decimal CardSales,
+    decimal OnlineSales,
     decimal CashRefunds,
     decimal Expenses)
 {
-    public static readonly RegisterTotals Empty = new(0, 0, 0, 0, 0);
+    public static readonly RegisterTotals Empty = new(0, 0, 0, 0, 0, 0);
 }

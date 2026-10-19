@@ -59,7 +59,8 @@ public sealed class SaleService(
                 request.CustomerPhone,
                 customer,
                 discountCode,
-                storeClock.Today);
+                storeClock.Today,
+                request.OnlinePaymentType);
 
             var stockBefore = sale.Items.ToDictionary(
                 item => item.ProductId,

@@ -13,6 +13,7 @@ public sealed record RegisterSessionDto(
     decimal OpeningCash,
     decimal CashSales,
     decimal CardSales,
+    decimal OnlineSales,
     decimal CashRefunds,
     decimal Expenses,
     decimal ExpectedCash,

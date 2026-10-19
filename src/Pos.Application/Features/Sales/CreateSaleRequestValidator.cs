@@ -1,6 +1,7 @@
 using FluentValidation;
 using Pos.Application.Common.Validation;
 using Pos.Domain.Entities;
+using Pos.Domain.Enums;
 
 namespace Pos.Application.Features.Sales;
 
@@ -19,10 +20,14 @@ public sealed class CreateSaleRequestValidator : AbstractValidator<CreateSaleReq
             line.RuleFor(l => l.Discount).Money();
         });
         RuleFor(x => x.PaymentMethod).IsInEnum();
+        RuleFor(x => x.OnlinePaymentType).IsInEnum();
+        RuleFor(x => x.OnlinePaymentType).NotNull()
+            .When(x => x.PaymentMethod == PaymentMethod.Online)
+            .WithMessage("Select the online payment type (Jazz Cash, Easy Paisa or Bank Transfer).");
         RuleFor(x => x.AmountPaid).Money();
         RuleFor(x => x.BillDiscount).Money();
         RuleFor(x => x.CustomerName).MaximumLength(Sale.CustomerNameMaxLength);
-        RuleFor(x => x.CustomerPhone).MaximumLength(Sale.CustomerPhoneMaxLength);
+        RuleFor(x => x.CustomerPhone).MaximumLength(Sale.CustomerPhoneMaxLength).MobileNumber();
         RuleFor(x => x.DiscountCode).MaximumLength(DiscountCode.CodeMaxLength);
     }
 }

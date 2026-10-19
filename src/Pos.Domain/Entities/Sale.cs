@@ -47,6 +47,9 @@ public class Sale : AuditableEntity
 
     public PaymentMethod PaymentMethod { get; private set; }
 
+    /// <summary>The online channel, set only when <see cref="PaymentMethod"/> is <see cref="PaymentMethod.Online"/>.</summary>
+    public OnlinePaymentType? OnlinePaymentType { get; private set; }
+
     /// <summary>Sum of list prices.</summary>
     public decimal Subtotal { get; private set; }
 
@@ -80,7 +83,8 @@ public class Sale : AuditableEntity
         string? customerPhone,
         Customer? customer = null,
         DiscountCode? discountCode = null,
-        DateOnly? today = null)
+        DateOnly? today = null,
+        OnlinePaymentType? onlinePaymentType = null)
     {
         register.EnsureOpen();
 
@@ -94,7 +98,7 @@ public class Sale : AuditableEntity
         if (customer is not null)
             sale.LinkCustomer(customer);
 
-        sale.Checkout(paymentMethod, amountPaid, billDiscount, discountCode, today);
+        sale.Checkout(paymentMethod, onlinePaymentType, amountPaid, billDiscount, discountCode, today);
         return sale;
     }
 
@@ -119,8 +123,16 @@ public class Sale : AuditableEntity
     }
 
     private void Checkout(
-        PaymentMethod paymentMethod, decimal amountPaid, decimal billDiscount, DiscountCode? discountCode, DateOnly? today)
+        PaymentMethod paymentMethod,
+        OnlinePaymentType? onlinePaymentType,
+        decimal amountPaid,
+        decimal billDiscount,
+        DiscountCode? discountCode,
+        DateOnly? today)
     {
+        if (paymentMethod == PaymentMethod.Online && onlinePaymentType is null)
+            throw new DomainException("Select the online payment type (Jazz Cash, Easy Paisa or Bank Transfer).");
+
         Subtotal = Money.Round(_items.Sum(i => i.UnitPrice * i.Quantity));
         ItemDiscount = Money.Round(_items.Sum(i => i.LineDiscount));
 
@@ -142,6 +154,7 @@ public class Sale : AuditableEntity
         BillDiscount = billDiscount + CodeDiscount;
         Total = Money.Round(NetBeforeBillDiscount - BillDiscount);
         PaymentMethod = paymentMethod;
+        OnlinePaymentType = paymentMethod == PaymentMethod.Online ? onlinePaymentType : null;
 
         if (paymentMethod == PaymentMethod.Cash)
         {

@@ -33,6 +33,10 @@ public sealed record SalesReportSummary(
     decimal NetProfit,
     decimal CashSales,
     decimal CardSales,
+    decimal OnlineSales,
+    decimal JazzCashSales,
+    decimal EasyPaisaSales,
+    decimal BankTransferSales,
     decimal AverageSale);
 
 public sealed record SalesReportBucket(string Label, DateTime Start, int SaleCount, decimal NetSales, decimal Returns, decimal NetRevenue);

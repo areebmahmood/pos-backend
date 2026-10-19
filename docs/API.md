@@ -22,7 +22,8 @@ Enums are serialized as **strings**. Timestamps are ISO-8601 UTC (`2026-10-10T09
 | Enum | Values |
 |---|---|
 | `UserRole` | `Admin`, `Salesman` |
-| `PaymentMethod` | `Cash`, `Card` |
+| `PaymentMethod` | `Cash`, `Card`, `Online` |
+| `OnlinePaymentType` | `JazzCash`, `EasyPaisa`, `BankTransfer` |
 | `RegisterStatus` | `Open`, `Closed` |
 | `SaleStatus` | `Completed`, `PartiallyReturned`, `Returned` |
 | `StockAdjustmentType` | `Initial`, `Manual`, `Sale`, `Return` |
@@ -112,11 +113,11 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 ```json
 { "id": 7, "userId": 2, "userName": "Ali (salesman)", "status": "Open",
   "openedAt": "...", "closedAt": null,
-  "openingCash": 5000, "cashSales": 12500, "cardSales": 3000, "cashRefunds": 400, "expenses": 600,
+  "openingCash": 5000, "cashSales": 12500, "cardSales": 3000, "onlineSales": 2000, "cashRefunds": 400, "expenses": 600,
   "expectedCash": 16500, "closingCash": null, "difference": null,
   "saleCount": 23, "openingNotes": null, "closingNotes": null }
 ```
-`expectedCash = openingCash + cashSales - cashRefunds - expenses`; `difference = closingCash - expectedCash`.
+`expectedCash = openingCash + cashSales - cashRefunds - expenses` (card and online sales never reach the drawer); `difference = closingCash - expectedCash`.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -137,7 +138,7 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 `SaleDto`:
 ```json
 { "id": 10, "invoiceNumber": "INV-261010-000010", "registerSessionId": 7, "cashierName": "Ali",
-  "customerName": null, "customerPhone": null, "customerId": null, "paymentMethod": "Cash",
+  "customerName": null, "customerPhone": null, "customerId": null, "paymentMethod": "Cash", "onlinePaymentType": null,
   "subtotal": 1050, "itemDiscount": 90, "billDiscount": 10, "discountCode": null, "codeDiscount": 0, "total": 950,
   "amountPaid": 1000, "change": 50, "returnedAmount": 0, "status": "Completed",
   "createdAt": "...", "items": [ ... ] }
@@ -147,13 +148,14 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 - `billDiscount` = the cashier's bill discount + `codeDiscount`
 - `codeDiscount` is what `discountCode` took off; the code applies to the amount after item discounts and the cashier's bill discount
 - `total` = `subtotal − itemDiscount − billDiscount`
+- `onlinePaymentType` is set only when `paymentMethod` is `Online`
 - `customerId` is set when the bill has a valid phone number (see Customers)
 
-`SaleSummaryDto`: `{ id, invoiceNumber, cashierName, customerName, paymentMethod, total, itemCount, status, createdAt }`
+`SaleSummaryDto`: `{ id, invoiceNumber, cashierName, customerName, paymentMethod, onlinePaymentType, total, itemCount, status, createdAt }`
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| POST | `/sales` | `{ items: [{ productId, quantity, discount? }], paymentMethod, amountPaid, billDiscount?, customerName?, customerPhone?, discountCode? }` | `201 SaleDto`. Prices are always taken from the server. `discount` is an optional extra discount **per unit** (≥ 0, at most the product's discounted price); it is multiplied by `quantity`. `400` if stock is insufficient, `amountPaid < total` for cash, or the discount code cannot be used (inactive, expired, limit reached, bill below its minimum); `404` for an unknown code. A valid `customerPhone` finds or creates the customer and, when WhatsApp is on, queues the thank-you message. |
+| POST | `/sales` | `{ items: [{ productId, quantity, discount? }], paymentMethod, onlinePaymentType?, amountPaid, billDiscount?, customerName?, customerPhone?, discountCode? }` | `201 SaleDto`. `onlinePaymentType` is required when `paymentMethod` is `Online` and ignored otherwise; card and online bills are recorded as paid in full. `customerPhone`, when given, must be a Pakistani mobile number (see Customers). Prices are always taken from the server. `discount` is an optional extra discount **per unit** (≥ 0, at most the product's discounted price); it is multiplied by `quantity`. `400` if stock is insufficient, `amountPaid < total` for cash, or the discount code cannot be used (inactive, expired, limit reached, bill below its minimum); `404` for an unknown code. A valid `customerPhone` finds or creates the customer and, when WhatsApp is on, queues the thank-you message. |
 | GET | `/sales?search=&from=&to=&cashierId=&page=&pageSize=` | | `Paged<SaleSummaryDto>` (`search` matches invoice number / customer; `from`/`to` are `yyyy-MM-dd` store-local dates; salesmen only see their own) |
 | GET | `/sales/{id}` | | `SaleDto` |
 | GET | `/sales/invoice/{invoiceNumber}` | | `SaleDto` |
@@ -195,7 +197,8 @@ Buckets: `Daily` → per hour, `Weekly`/`Monthly` → per day, `Yearly` → per 
                "grossSales": 250000, "itemDiscounts": 5000, "billDiscounts": 1000,
                "netSales": 244000, "returns": 2000, "netRevenue": 242000,
                "costOfGoods": 180000, "grossProfit": 62000, "expenses": 8000, "netProfit": 54000,
-               "cashSales": 200000, "cardSales": 44000, "averageSale": 2033.33 },
+               "cashSales": 190000, "cardSales": 44000, "onlineSales": 10000,
+               "jazzCashSales": 6000, "easyPaisaSales": 3000, "bankTransferSales": 1000, "averageSale": 2033.33 },
   "buckets": [ { "label": "01 Oct", "start": "2026-10-01T00:00:00", "saleCount": 4, "netSales": 8000, "returns": 0, "netRevenue": 8000 } ],
   "topProducts": [ { "productId": 1, "productName": "Basmati Rice 1kg", "quantity": 40, "revenue": 12800 } ],
   "cashiers": [ { "userId": 2, "userName": "Ali", "saleCount": 80, "total": 160000 } ] }
@@ -222,7 +225,7 @@ Buckets: `Daily` → per hour, `Weekly`/`Monthly` → per day, `Yearly` → per 
 
 ## Customers
 
-Customers are known by phone number, stored as international digits without the plus (`923001234567`). Any form is accepted (`0300-1234567`, `+92 300 1234567`, `3001234567`); local numbers get the store's default country code. A bill with a valid phone number finds or creates the customer automatically.
+Customers are known by phone number, stored as international digits without the plus (`923001234567`). Phone numbers on bills and customers must be Pakistani mobile numbers: 11 digits starting with `03` (`03001234567`), or `+92` / `0092` / `92` followed by 10 digits starting with `3` (`+923001234567`). Spaces and dashes are ignored (`0300-1234567`, `+92 300 1234567`); anything else is a `400` validation error. A bill with a valid phone number finds or creates the customer automatically.
 
 `CustomerDto`: `{ id, name, phone, optedOut, purchaseCount, totalSpent, lastPurchaseAt, createdAt }` (`totalSpent` is net of returns; `optedOut` customers get no promotions).
 
