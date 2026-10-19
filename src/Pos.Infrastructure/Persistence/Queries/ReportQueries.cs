@@ -87,6 +87,18 @@ internal sealed class ReportQueries(PosDbContext db) : IReportQueries
             .Where(e => createdById == null || e.CreatedById == createdById)
             .SumAsync(e => (decimal?)e.Amount, ct) ?? 0;
 
+    public async Task<IReadOnlyList<ExpenseRow>> GetExpensesAsync(DateRange range, CancellationToken ct)
+    {
+        var rows = await db.Expenses.AsNoTracking()
+            .Where(e => e.CreatedAt >= range.FromUtc && e.CreatedAt < range.ToUtc)
+            .OrderBy(e => e.CreatedAt)
+            .ThenBy(e => e.Id)
+            .Select(e => new { e.Id, e.CreatedAt, e.Title, e.Category, e.Amount, CreatedBy = e.CreatedBy.FullName })
+            .ToListAsync(ct);
+
+        return rows.Select(r => new ExpenseRow(r.Id, r.CreatedAt, r.Title, r.Category, r.Amount, r.CreatedBy)).ToList();
+    }
+
     public async Task<ItemTotals> GetItemTotalsAsync(DateRange range, CancellationToken ct)
     {
         var totals = await SaleItemsIn(range)

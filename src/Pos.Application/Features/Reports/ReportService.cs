@@ -16,12 +16,12 @@ public sealed class ReportService(IReportQueries queries, IStoreClock storeClock
 
         var sales = await queries.GetSalesByHourAsync(range, offset, null, ct);
         var returns = await queries.GetReturnsByHourAsync(range, offset, null, ct);
-        var expenses = await queries.GetExpensesTotalAsync(range, null, ct);
+        var expenses = await queries.GetExpensesAsync(range, ct);
         var items = await queries.GetItemTotalsAsync(range, ct);
         var topProducts = await queries.GetTopProductsAsync(range, TopProductCount, ct);
         var cashiers = await queries.GetCashierTotalsAsync(range, ct);
 
-        var summary = BuildSummary(sales, returns, items, expenses);
+        var summary = BuildSummary(sales, returns, items, expenses.Sum(e => e.Amount));
         var buckets = BuildBuckets(query.Period, from, to, sales, returns);
 
         return new SalesReportDto(
@@ -31,7 +31,9 @@ public sealed class ReportService(IReportQueries queries, IStoreClock storeClock
             summary,
             buckets,
             topProducts.Select(p => new TopProductDto(p.ProductId, p.ProductName, p.Quantity, p.Revenue)).ToList(),
-            cashiers.Select(c => new CashierSalesDto(c.UserId, c.UserName, c.SaleCount, c.Total)).ToList());
+            cashiers.Select(c => new CashierSalesDto(c.UserId, c.UserName, c.SaleCount, c.Total)).ToList(),
+            BuildExpenseCategories(expenses),
+            expenses.Select(e => new ReportExpenseDto(e.Id, e.CreatedAt, e.Title, e.Category, e.Amount, e.CreatedBy)).ToList());
     }
 
     private static SalesReportSummary BuildSummary(
@@ -69,6 +71,14 @@ public sealed class ReportService(IReportQueries queries, IStoreClock storeClock
             BankTransferSales: Money.Round(sales.Sum(s => s.BankTransferTotal)),
             AverageSale: saleCount == 0 ? 0 : Money.Round(netSales / saleCount));
     }
+
+    private static List<ExpenseCategoryDto> BuildExpenseCategories(IReadOnlyList<ExpenseRow> expenses) =>
+        expenses
+            .GroupBy(e => string.IsNullOrWhiteSpace(e.Category) ? null : e.Category.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new ExpenseCategoryDto(g.Key, g.Count(), Money.Round(g.Sum(e => e.Amount))))
+            .OrderByDescending(c => c.Total)
+            .ThenBy(c => c.Category)
+            .ToList();
 
     private static List<SalesReportBucket> BuildBuckets(
         ReportPeriod period,

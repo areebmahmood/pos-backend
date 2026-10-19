@@ -10,11 +10,19 @@ public static class PhoneNumber
     public const int LocalMobileLength = 11;
 
     /// <summary>Example shown in validation messages.</summary>
-    public const string MobileFormatHint = "11 digits starting with 03, e.g. 03001234567, or +92 followed by 10 digits";
+    public const string MobileFormatHint = "11 digits starting with a Pakistani network code (030x Jazz, 031x Zong, 032x Jazz/Warid, 033x Ufone, 034x Telenor or 0355 SCO), e.g. 03001234567, or +92 followed by 10 digits";
+
+    /// <summary>
+    /// Mobile network codes in use in Pakistan, as the digits after the leading 0 (or after 92):
+    /// 30x Jazz, 31x Zong, 32x Jazz (ex-Warid), 33x Ufone/Onic, 34x Telenor, 355 SCO.
+    /// Whole operator blocks are allowed so new codes inside a block (and ported numbers) keep working.
+    /// </summary>
+    private static readonly string[] NetworkCodePrefixes = ["30", "31", "32", "33", "34", "355"];
 
     /// <summary>
     /// True for a Pakistani mobile number: <c>03</c> plus 9 digits (11 in all), or <c>+92</c> / <c>0092</c> / <c>92</c>
-    /// plus <c>3</c> and 9 digits. Spaces and dashes are ignored.
+    /// plus <c>3</c> and 9 digits, whose network code belongs to a Pakistani mobile operator (see
+    /// <see cref="NetworkCodePrefixes"/>). Spaces and dashes are ignored.
     /// </summary>
     public static bool IsValidMobile(string? raw)
     {
@@ -30,12 +38,14 @@ public static class PhoneNumber
         if (!compact.All(char.IsAsciiDigit))
             return false;
 
-        return compact.Length switch
+        var national = compact.Length switch
         {
-            LocalMobileLength => compact.StartsWith("03"),
-            12 => compact.StartsWith("923"),
-            _ => false
+            LocalMobileLength when compact.StartsWith('0') => compact[1..],
+            12 when compact.StartsWith("92") => compact[2..],
+            _ => null
         };
+
+        return national is not null && NetworkCodePrefixes.Any(national.StartsWith);
     }
 
     /// <summary>

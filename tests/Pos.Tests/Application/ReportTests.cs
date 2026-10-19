@@ -1,4 +1,5 @@
 using Pos.Application.Features.Dashboard;
+using Pos.Application.Features.Expenses;
 using Pos.Application.Features.Products;
 using Pos.Application.Features.Registers;
 using Pos.Application.Features.Reports;
@@ -74,6 +75,27 @@ public sealed class ReportTests : IAsyncLifetime
         var yearly = await GetReportAsync(ReportPeriod.Yearly, new DateOnly(2026, 10, 10));
         Assert.Equal(12, yearly.Buckets.Count);
         Assert.Equal(1050, yearly.Buckets.Single(b => b.Label == "Oct 2026").NetSales);
+    }
+
+    [Fact]
+    public async Task Report_lists_expenses_in_the_range_with_category_totals()
+    {
+        foreach (var (title, category, amount) in new[] { ("Tea", "Kitchen", 50m), ("Milk", "kitchen", 30m), ("Bulbs", null, 200m) })
+            await _host.RunAsync<IExpenseService, ExpenseDto>(s => s.CreateAsync(new CreateExpenseRequest(title, category, amount, null), default));
+
+        var report = await GetReportAsync(ReportPeriod.Daily, new DateOnly(2026, 10, 10));
+
+        Assert.Equal(280, report.Summary.Expenses);
+        Assert.Equal(150 - 280, report.Summary.NetProfit);
+        Assert.Equal(["Tea", "Milk", "Bulbs"], report.Expenses.Select(e => e.Title));
+        Assert.Equal("admin", report.Expenses[0].CreatedBy, ignoreCase: true);
+        Assert.Collection(report.ExpenseCategories,
+            c => { Assert.Null(c.Category); Assert.Equal(200, c.Total); },
+            c => { Assert.Equal("Kitchen", c.Category); Assert.Equal(2, c.Count); Assert.Equal(80, c.Total); });
+
+        var lastWeek = await GetReportAsync(ReportPeriod.Daily, new DateOnly(2026, 10, 3));
+        Assert.Empty(lastWeek.Expenses);
+        Assert.Empty(lastWeek.ExpenseCategories);
     }
 
     [Fact]

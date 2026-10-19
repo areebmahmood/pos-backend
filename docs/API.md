@@ -201,9 +201,13 @@ Buckets: `Daily` → per hour, `Weekly`/`Monthly` → per day, `Yearly` → per 
                "jazzCashSales": 6000, "easyPaisaSales": 3000, "bankTransferSales": 1000, "averageSale": 2033.33 },
   "buckets": [ { "label": "01 Oct", "start": "2026-10-01T00:00:00", "saleCount": 4, "netSales": 8000, "returns": 0, "netRevenue": 8000 } ],
   "topProducts": [ { "productId": 1, "productName": "Basmati Rice 1kg", "quantity": 40, "revenue": 12800 } ],
-  "cashiers": [ { "userId": 2, "userName": "Ali", "saleCount": 80, "total": 160000 } ] }
+  "cashiers": [ { "userId": 2, "userName": "Ali", "saleCount": 80, "total": 160000 } ],
+  "expenseCategories": [ { "category": "Utilities", "count": 2, "total": 6000 }, { "category": null, "count": 1, "total": 2000 } ],
+  "expenses": [ { "id": 7, "createdAt": "2026-10-02T09:15:00Z", "title": "Electricity bill", "category": "Utilities",
+                  "amount": 5000, "createdBy": "Ali" } ] }
 ```
-`grossSales` = Σ subtotal, `netSales` = gross − discounts, `netRevenue` = netSales − returns.
+`grossSales` = Σ subtotal, `netSales` = gross − discounts, `netRevenue` = netSales − returns, `netProfit` = grossProfit − expenses.
+`expenses` lists every expense recorded in the range (oldest first); `expenseCategories` totals them per category (largest first; `null` = no category).
 
 ## Dashboards
 
@@ -225,7 +229,7 @@ Buckets: `Daily` → per hour, `Weekly`/`Monthly` → per day, `Yearly` → per 
 
 ## Customers
 
-Customers are known by phone number, stored as international digits without the plus (`923001234567`). Phone numbers on bills and customers must be Pakistani mobile numbers: 11 digits starting with `03` (`03001234567`), or `+92` / `0092` / `92` followed by 10 digits starting with `3` (`+923001234567`). Spaces and dashes are ignored (`0300-1234567`, `+92 300 1234567`); anything else is a `400` validation error. A bill with a valid phone number finds or creates the customer automatically.
+Customers are known by phone number, stored as international digits without the plus (`923001234567`). Phone numbers on bills and customers must be Pakistani mobile numbers: 11 digits starting with `03` (`03001234567`), or `+92` / `0092` / `92` followed by 10 digits starting with `3` (`+923001234567`), with a mobile network code in use: `030x` Jazz, `031x` Zong, `032x` Jazz (ex-Warid), `033x` Ufone, `034x` Telenor or `0355` SCO (so `0350…`, `036x`–`039x` are rejected). Spaces and dashes are ignored (`0300-1234567`, `+92 300 1234567`); anything else is a `400` validation error. A bill with a valid phone number finds or creates the customer automatically.
 
 `CustomerDto`: `{ id, name, phone, optedOut, purchaseCount, totalSpent, lastPurchaseAt, createdAt }` (`totalSpent` is net of returns; `optedOut` customers get no promotions).
 
