@@ -36,7 +36,13 @@ public sealed record SalesHourAggregate(
     decimal BillDiscount,
     decimal Total,
     decimal CashTotal,
-    decimal CardTotal);
+    decimal CardTotal,
+    decimal JazzCashTotal,
+    decimal EasyPaisaTotal,
+    decimal BankTransferTotal)
+{
+    public decimal OnlineTotal => JazzCashTotal + EasyPaisaTotal + BankTransferTotal;
+}
 
 public sealed record ReturnsHourAggregate(DateTime LocalHour, int ReturnCount, decimal RefundAmount, decimal CostAmount);
 

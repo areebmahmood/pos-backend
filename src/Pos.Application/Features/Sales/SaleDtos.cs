@@ -27,6 +27,7 @@ public sealed record SaleDto(
     string? CustomerPhone,
     int? CustomerId,
     PaymentMethod PaymentMethod,
+    OnlinePaymentType? OnlinePaymentType,
     decimal Subtotal,
     decimal ItemDiscount,
     decimal BillDiscount,
@@ -46,6 +47,7 @@ public sealed record SaleSummaryDto(
     string CashierName,
     string? CustomerName,
     PaymentMethod PaymentMethod,
+    OnlinePaymentType? OnlinePaymentType,
     decimal Total,
     int ItemCount,
     SaleStatus Status,
@@ -63,7 +65,8 @@ public sealed record CreateSaleRequest(
     decimal BillDiscount,
     string? CustomerName,
     string? CustomerPhone,
-    string? DiscountCode = null);
+    string? DiscountCode = null,
+    OnlinePaymentType? OnlinePaymentType = null);
 
 public sealed record SaleQuery : PageRequest
 {

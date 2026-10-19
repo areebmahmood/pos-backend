@@ -63,6 +63,10 @@ public sealed class ReportService(IReportQueries queries, IStoreClock storeClock
             NetProfit: Money.Round(grossProfit - expenses),
             CashSales: Money.Round(sales.Sum(s => s.CashTotal)),
             CardSales: Money.Round(sales.Sum(s => s.CardTotal)),
+            OnlineSales: Money.Round(sales.Sum(s => s.OnlineTotal)),
+            JazzCashSales: Money.Round(sales.Sum(s => s.JazzCashTotal)),
+            EasyPaisaSales: Money.Round(sales.Sum(s => s.EasyPaisaTotal)),
+            BankTransferSales: Money.Round(sales.Sum(s => s.BankTransferTotal)),
             AverageSale: saleCount == 0 ? 0 : Money.Round(netSales / saleCount));
     }
 

@@ -6,6 +6,38 @@ public static class PhoneNumber
     public const int MaxLength = 15;
     private const int MinLength = 8;
 
+    /// <summary>Digits in a local Pakistani mobile number, e.g. 03001234567.</summary>
+    public const int LocalMobileLength = 11;
+
+    /// <summary>Example shown in validation messages.</summary>
+    public const string MobileFormatHint = "11 digits starting with 03, e.g. 03001234567, or +92 followed by 10 digits";
+
+    /// <summary>
+    /// True for a Pakistani mobile number: <c>03</c> plus 9 digits (11 in all), or <c>+92</c> / <c>0092</c> / <c>92</c>
+    /// plus <c>3</c> and 9 digits. Spaces and dashes are ignored.
+    /// </summary>
+    public static bool IsValidMobile(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        var compact = string.Concat(raw.Where(c => c is not (' ' or '-')));
+        if (compact.StartsWith('+'))
+            compact = compact[1..];
+        else if (compact.StartsWith("00"))
+            compact = compact[2..];
+
+        if (!compact.All(char.IsAsciiDigit))
+            return false;
+
+        return compact.Length switch
+        {
+            LocalMobileLength => compact.StartsWith("03"),
+            12 => compact.StartsWith("923"),
+            _ => false
+        };
+    }
+
     /// <summary>
     /// Returns the number as international digits (e.g. <c>923001234567</c>), or <c>null</c> when it is not a usable number.
     /// Local numbers (a leading 0, or 10 digits or fewer) get <paramref name="defaultCountryCode"/>.

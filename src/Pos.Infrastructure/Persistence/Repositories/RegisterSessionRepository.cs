@@ -49,7 +49,8 @@ internal sealed class RegisterSessionRepository(PosDbContext db) : Repository<Re
                 RegisterId = g.Key,
                 Count = g.Count(),
                 Cash = g.Where(s => s.PaymentMethod == PaymentMethod.Cash).Sum(s => (decimal?)s.Total) ?? 0,
-                Card = g.Where(s => s.PaymentMethod == PaymentMethod.Card).Sum(s => (decimal?)s.Total) ?? 0
+                Card = g.Where(s => s.PaymentMethod == PaymentMethod.Card).Sum(s => (decimal?)s.Total) ?? 0,
+                Online = g.Where(s => s.PaymentMethod == PaymentMethod.Online).Sum(s => (decimal?)s.Total) ?? 0
             })
             .ToDictionaryAsync(x => x.RegisterId, ct);
 
@@ -72,6 +73,7 @@ internal sealed class RegisterSessionRepository(PosDbContext db) : Repository<Re
                 sale?.Count ?? 0,
                 sale?.Cash ?? 0,
                 sale?.Card ?? 0,
+                sale?.Online ?? 0,
                 refunds.GetValueOrDefault(id),
                 expenses.GetValueOrDefault(id));
         });

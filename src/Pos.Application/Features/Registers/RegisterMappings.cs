@@ -37,6 +37,7 @@ public static class RegisterMappings
             row.OpeningCash,
             totals.CashSales,
             totals.CardSales,
+            totals.OnlineSales,
             totals.CashRefunds,
             totals.Expenses,
             expected,
