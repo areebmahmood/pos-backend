@@ -22,12 +22,9 @@ public class StoreSettings : AuditableEntity
         CurrencySymbol = "Rs",
         ReceiptFooter = "Thank you for shopping with us!",
         UrduInstructions = DefaultUrduInstructions,
-        WhatsAppGroupCaption = DefaultWhatsAppGroupCaption,
         DefaultCountryCode = "92",
         WhatsAppTemplateLanguage = "en"
     };
-
-    public const string DefaultWhatsAppGroupCaption = "Scan to join our WhatsApp group for offers";
 
     public string StoreName { get; private set; } = default!;
     public string? Address { get; private set; }

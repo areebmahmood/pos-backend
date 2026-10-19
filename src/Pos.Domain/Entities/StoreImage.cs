@@ -6,6 +6,12 @@ namespace Pos.Domain.Entities;
 public class StoreImage
 {
     public const string WhatsAppGroupQr = "whatsapp-group-qr";
+    public const string StoreLogo = "store-logo";
+    public const string ReceiptLogo = "receipt-logo";
+
+    /// <summary>The kinds the store can upload; each is served at <c>/api/settings/{kind}</c>.</summary>
+    public static readonly IReadOnlyList<string> Kinds = [StoreLogo, ReceiptLogo, WhatsAppGroupQr];
+
     public const int KindMaxLength = 50;
 
     private StoreImage() { }

@@ -1,5 +1,7 @@
 namespace Pos.Application.Features.Settings;
 
+/// <param name="StoreLogoUpdatedAt">When the store logo was last uploaded; <c>null</c> if there is none.</param>
+/// <param name="ReceiptLogoUpdatedAt">When the receipt logo was last uploaded; <c>null</c> to print the store logo instead.</param>
 public sealed record StoreSettingsDto(
     string StoreName,
     string? Address,
@@ -8,6 +10,8 @@ public sealed record StoreSettingsDto(
     string? UrduInstructions,
     string? WhatsAppGroupCaption,
     DateTime? WhatsAppGroupQrUpdatedAt,
+    DateTime? StoreLogoUpdatedAt,
+    DateTime? ReceiptLogoUpdatedAt,
     string CurrencySymbol,
     string TimeZoneId);
 

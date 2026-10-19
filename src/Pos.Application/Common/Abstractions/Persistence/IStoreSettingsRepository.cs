@@ -9,8 +9,8 @@ public interface IStoreSettingsRepository
 
     Task<StoreImage?> GetImageAsync(string kind, CancellationToken ct);
 
-    /// <summary>When the image was last replaced, without loading its bytes; <c>null</c> if there is none.</summary>
-    Task<DateTime?> GetImageUpdatedAtAsync(string kind, CancellationToken ct);
+    /// <summary>When each uploaded image was last replaced, by kind, without loading the bytes.</summary>
+    Task<IReadOnlyDictionary<string, DateTime>> GetImageVersionsAsync(CancellationToken ct);
 
     void AddImage(StoreImage image);
 

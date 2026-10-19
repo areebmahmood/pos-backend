@@ -143,6 +143,31 @@ public sealed class ApiSmokeTests(PosApiFactory factory) : IClassFixture<PosApiF
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(url)).StatusCode);
     }
 
+    [Fact]
+    public async Task Admin_can_upload_store_and_receipt_logos_and_everyone_can_read_them()
+    {
+        var client = await LoginAsync("admin", "Admin@123");
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 5, 6, 7, 8];
+
+        var upload = await client.PutAsync("/api/settings/store-logo", ImageForm(png, "logo.png"));
+        Assert.Equal(HttpStatusCode.OK, upload.StatusCode);
+        var settings = await upload.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.NotNull(settings!["storeLogoUpdatedAt"]);
+        Assert.Null(settings["receiptLogoUpdatedAt"]);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/settings/receipt-logo")).StatusCode);
+
+        var salesman = await LoginAsync("salesman", "Sales@123");
+        var logo = await salesman.GetAsync("/api/settings/store-logo");
+        Assert.Equal("image/png", logo.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(png, await logo.Content.ReadAsByteArrayAsync());
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await salesman.PutAsync("/api/settings/receipt-logo", ImageForm(png, "logo.png"))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/settings/other-image")).StatusCode);
+
+        var removed = await client.DeleteAsync("/api/settings/store-logo");
+        Assert.Null((await removed.Content.ReadFromJsonAsync<JsonObject>())!["storeLogoUpdatedAt"]);
+    }
+
     private static MultipartFormDataContent ImageForm(byte[] content, string fileName) =>
         new() { { new ByteArrayContent(content), "file", fileName } };
 

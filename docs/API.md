@@ -273,17 +273,17 @@ Temporary failures (rate limits, network, Meta server errors) are retried up to 
 
 ## Store settings
 
-`StoreSettingsDto`: `{ storeName, address, phone, receiptFooter, urduInstructions, whatsAppGroupCaption, whatsAppGroupQrUpdatedAt, currencySymbol, timeZoneId }`
+`StoreSettingsDto`: `{ storeName, address, phone, receiptFooter, urduInstructions, whatsAppGroupCaption, whatsAppGroupQrUpdatedAt, storeLogoUpdatedAt, receiptLogoUpdatedAt, currencySymbol, timeZoneId }`
 
-`urduInstructions` is multi-line Urdu text (right-to-left) printed at the bottom of every receipt. `whatsAppGroupQrUpdatedAt` is `null` when no WhatsApp group QR code is uploaded, otherwise it changes whenever the image is replaced; the receipt prints that image with `whatsAppGroupCaption` under it. `timeZoneId` is read-only and comes from the `Store:TimeZoneId` server setting.
+`urduInstructions` is multi-line Urdu text (right-to-left) printed at the bottom of every receipt. `whatsAppGroupQrUpdatedAt` is `null` when no WhatsApp group QR code is uploaded, otherwise it changes whenever the image is replaced; the receipt prints that image with `whatsAppGroupCaption` under it (nothing when the caption is empty). `storeLogoUpdatedAt` and `receiptLogoUpdatedAt` work the same way for the store logo (shown in the app sidebar) and the optional receipt logo; a receipt prints the receipt logo, else the store logo, else the store name. `timeZoneId` is read-only and comes from the `Store:TimeZoneId` server setting.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
 | GET | `/settings` | | `StoreSettingsDto` (any signed-in user) |
 | PUT *(Admin)* | `/settings` | `{ storeName, address?, phone?, receiptFooter?, urduInstructions?, whatsAppGroupCaption?, currencySymbol }` | `StoreSettingsDto` |
-| GET | `/settings/whatsapp-group-qr` | | The image bytes with their `Content-Type` (`404` if none) |
-| PUT *(Admin)* | `/settings/whatsapp-group-qr` | `multipart/form-data` with one file field `file` | `StoreSettingsDto`. PNG, JPEG, WebP or GIF, at most 1 MB. |
-| DELETE *(Admin)* | `/settings/whatsapp-group-qr` | | `StoreSettingsDto` |
+| GET | `/settings/{image}` | | The image bytes with their `Content-Type` (`404` if none). `{image}` is `store-logo`, `receipt-logo` or `whatsapp-group-qr`. |
+| PUT *(Admin)* | `/settings/{image}` | `multipart/form-data` with one file field `file` | `StoreSettingsDto`. PNG, JPEG, WebP or GIF, at most 1 MB. |
+| DELETE *(Admin)* | `/settings/{image}` | | `StoreSettingsDto` |
 
 ### WhatsApp messaging *(Admin)*
 

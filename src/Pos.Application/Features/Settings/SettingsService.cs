@@ -33,18 +33,18 @@ public sealed class SettingsService(
         return await ToDtoAsync(entity, ct);
     }
 
-    public async Task<StoreImageFile> GetWhatsAppGroupQrAsync(CancellationToken ct)
+    public async Task<StoreImageFile> GetImageAsync(string kind, CancellationToken ct)
     {
-        var image = await settings.GetImageAsync(StoreImage.WhatsAppGroupQr, ct)
-            ?? throw new NotFoundException("No WhatsApp group QR code has been uploaded.");
+        var image = await settings.GetImageAsync(EnsureKind(kind), ct)
+            ?? throw new NotFoundException("This image has not been uploaded.");
         return new StoreImageFile(image.Content, image.ContentType);
     }
 
-    public async Task<StoreSettingsDto> SetWhatsAppGroupQrAsync(byte[] content, CancellationToken ct)
+    public async Task<StoreSettingsDto> SetImageAsync(string kind, byte[] content, CancellationToken ct)
     {
-        var image = await settings.GetImageAsync(StoreImage.WhatsAppGroupQr, ct);
+        var image = await settings.GetImageAsync(EnsureKind(kind), ct);
         if (image is null)
-            settings.AddImage(new StoreImage(StoreImage.WhatsAppGroupQr, content, clock.UtcNow));
+            settings.AddImage(new StoreImage(kind, content, clock.UtcNow));
         else
             image.Replace(content, clock.UtcNow);
 
@@ -52,9 +52,9 @@ public sealed class SettingsService(
         return await GetAsync(ct);
     }
 
-    public async Task<StoreSettingsDto> RemoveWhatsAppGroupQrAsync(CancellationToken ct)
+    public async Task<StoreSettingsDto> RemoveImageAsync(string kind, CancellationToken ct)
     {
-        if (await settings.GetImageAsync(StoreImage.WhatsAppGroupQr, ct) is { } image)
+        if (await settings.GetImageAsync(EnsureKind(kind), ct) is { } image)
         {
             settings.RemoveImage(image);
             await unitOfWork.SaveChangesAsync(ct);
@@ -103,5 +103,8 @@ public sealed class SettingsService(
     }
 
     private async Task<StoreSettingsDto> ToDtoAsync(StoreSettings entity, CancellationToken ct) =>
-        entity.ToDto(storeClock.TimeZoneId, await settings.GetImageUpdatedAtAsync(StoreImage.WhatsAppGroupQr, ct));
+        entity.ToDto(storeClock.TimeZoneId, await settings.GetImageVersionsAsync(ct));
+
+    private static string EnsureKind(string kind) =>
+        StoreImage.Kinds.Contains(kind) ? kind : throw new NotFoundException($"Unknown store image \"{kind}\".");
 }
