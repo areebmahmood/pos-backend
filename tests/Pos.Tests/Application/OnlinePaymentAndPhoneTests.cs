@@ -39,6 +39,16 @@ public sealed class OnlinePaymentAndPhoneTests : IAsyncLifetime
     [InlineData("04235761234", false)]   // landline, not 03
     [InlineData("+92300123456", false)]  // +92 with 9 digits
     [InlineData("0300123456a", false)]
+    [InlineData("03121234567", true)]    // Zong
+    [InlineData("03211234567", true)]    // Jazz (ex-Warid)
+    [InlineData("03331234567", true)]    // Ufone
+    [InlineData("03451234567", true)]    // Telenor
+    [InlineData("03551234567", true)]    // SCO
+    [InlineData("+923551234567", true)]
+    [InlineData("03501234567", false)]   // no network uses 0350
+    [InlineData("03601234567", false)]   // no network uses 036x
+    [InlineData("03991234567", false)]
+    [InlineData("+923901234567", false)]
     [InlineData("", false)]
     public void Mobile_numbers_must_be_pakistani_mobiles(string raw, bool valid) =>
         Assert.Equal(valid, PhoneNumber.IsValidMobile(raw));

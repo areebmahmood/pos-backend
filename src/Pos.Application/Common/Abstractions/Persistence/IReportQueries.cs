@@ -16,6 +16,9 @@ public interface IReportQueries
 
     Task<decimal> GetExpensesTotalAsync(DateRange range, int? createdById, CancellationToken ct);
 
+    /// <summary>Every expense in the range, oldest first.</summary>
+    Task<IReadOnlyList<ExpenseRow>> GetExpensesAsync(DateRange range, CancellationToken ct);
+
     Task<ItemTotals> GetItemTotalsAsync(DateRange range, CancellationToken ct);
 
     Task<IReadOnlyList<TopProductRow>> GetTopProductsAsync(DateRange range, int take, CancellationToken ct);
@@ -49,5 +52,7 @@ public sealed record ReturnsHourAggregate(DateTime LocalHour, int ReturnCount, d
 public sealed record ItemTotals(decimal ItemsSold, decimal CostOfGoods);
 
 public sealed record TopProductRow(int ProductId, string ProductName, decimal Quantity, decimal Revenue);
+
+public sealed record ExpenseRow(int Id, DateTime CreatedAt, string Title, string? Category, decimal Amount, string CreatedBy);
 
 public sealed record CashierRow(int UserId, string UserName, int SaleCount, decimal Total);

@@ -15,7 +15,9 @@ public sealed record SalesReportDto(
     SalesReportSummary Summary,
     IReadOnlyList<SalesReportBucket> Buckets,
     IReadOnlyList<TopProductDto> TopProducts,
-    IReadOnlyList<CashierSalesDto> Cashiers);
+    IReadOnlyList<CashierSalesDto> Cashiers,
+    IReadOnlyList<ExpenseCategoryDto> ExpenseCategories,
+    IReadOnlyList<ReportExpenseDto> Expenses);
 
 public sealed record SalesReportSummary(
     int SaleCount,
@@ -42,5 +44,10 @@ public sealed record SalesReportSummary(
 public sealed record SalesReportBucket(string Label, DateTime Start, int SaleCount, decimal NetSales, decimal Returns, decimal NetRevenue);
 
 public sealed record TopProductDto(int ProductId, string ProductName, decimal Quantity, decimal Revenue);
+
+/// <summary>Expenses grouped by category; expenses without one are grouped under <c>null</c>.</summary>
+public sealed record ExpenseCategoryDto(string? Category, int Count, decimal Total);
+
+public sealed record ReportExpenseDto(int Id, DateTime CreatedAt, string Title, string? Category, decimal Amount, string CreatedBy);
 
 public sealed record CashierSalesDto(int UserId, string UserName, int SaleCount, decimal Total);
