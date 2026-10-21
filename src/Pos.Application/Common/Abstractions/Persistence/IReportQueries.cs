@@ -19,9 +19,9 @@ public interface IReportQueries
     /// <summary>Every expense in the range, oldest first.</summary>
     Task<IReadOnlyList<ExpenseRow>> GetExpensesAsync(DateRange range, CancellationToken ct);
 
-    Task<ItemTotals> GetItemTotalsAsync(DateRange range, CancellationToken ct);
+    Task<ItemTotals> GetItemTotalsAsync(DateRange range, int? cashierId, CancellationToken ct);
 
-    Task<IReadOnlyList<TopProductRow>> GetTopProductsAsync(DateRange range, int take, CancellationToken ct);
+    Task<IReadOnlyList<TopProductRow>> GetTopProductsAsync(DateRange range, int take, int? cashierId, CancellationToken ct);
 
     Task<IReadOnlyList<CashierRow>> GetCashierTotalsAsync(DateRange range, CancellationToken ct);
 
