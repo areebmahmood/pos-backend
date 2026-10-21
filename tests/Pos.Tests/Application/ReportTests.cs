@@ -12,6 +12,7 @@ namespace Pos.Tests.Application;
 public sealed class ReportTests : IAsyncLifetime
 {
     private readonly PosTestHost _host = new();
+    private int _productId;
 
     public async Task InitializeAsync()
     {
@@ -20,6 +21,7 @@ public sealed class ReportTests : IAsyncLifetime
 
         var product = await _host.RunAsync<IProductService, ProductDto>(s => s.CreateAsync(
             new CreateProductRequest("Cola", null, null, null, 100, 150, null, 100, 5), default));
+        _productId = product.Id;
         await _host.RunAsync<IRegisterService, RegisterSessionDto>(s => s.OpenAsync(new OpenRegisterRequest(0, null), default));
 
         // 2026-10-10 12:00 and 18:30 Pakistan time, plus one sale on 2026-10-03.
@@ -96,6 +98,42 @@ public sealed class ReportTests : IAsyncLifetime
         var lastWeek = await GetReportAsync(ReportPeriod.Daily, new DateOnly(2026, 10, 3));
         Assert.Empty(lastWeek.Expenses);
         Assert.Empty(lastWeek.ExpenseCategories);
+    }
+
+    [Fact]
+    public async Task Salesman_report_covers_only_their_own_sales_without_cost_or_expenses()
+    {
+        await _host.RunAsync<IExpenseService, ExpenseDto>(s => s.CreateAsync(new CreateExpenseRequest("Tea", null, 50, null), default));
+
+        var salesman = await _host.AddUserAsync("ali", UserRole.Salesman);
+        _host.SignInAs(salesman);
+        await _host.RunAsync<IRegisterService, RegisterSessionDto>(s => s.OpenAsync(new OpenRegisterRequest(0, null), default));
+        await _host.RunAsync<ISaleService, SaleDto>(s => s.CreateAsync(
+            new CreateSaleRequest([new SaleLineRequest(_productId, 3)], PaymentMethod.Cash, 1000, 0, null, null), default));
+
+        var report = await GetReportAsync(ReportPeriod.Daily, new DateOnly(2026, 10, 10));
+
+        Assert.True(report.OwnSalesOnly);
+        Assert.Equal(1, report.Summary.SaleCount);
+        Assert.Equal(450, report.Summary.NetSales);
+        Assert.Equal(3, report.Summary.ItemsSold);
+        Assert.Equal(450, Assert.Single(report.TopProducts).Revenue);
+        Assert.Equal(0, report.Summary.CostOfGoods);
+        Assert.Equal(0, report.Summary.GrossProfit);
+        Assert.Equal(0, report.Summary.Expenses);
+        Assert.Equal(0, report.Summary.NetProfit);
+        Assert.Empty(report.Cashiers);
+        Assert.Empty(report.Expenses);
+        Assert.Empty(report.ExpenseCategories);
+    }
+
+    [Fact]
+    public async Task Admin_report_is_store_wide()
+    {
+        var report = await GetReportAsync(ReportPeriod.Daily, new DateOnly(2026, 10, 10));
+
+        Assert.False(report.OwnSalesOnly);
+        Assert.Single(report.Cashiers);
     }
 
     [Fact]

@@ -4,7 +4,11 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Features.Reports;
 
-public sealed class ReportService(IReportQueries queries, IStoreClock storeClock) : IReportService
+/// <summary>
+/// Admins get the store-wide report. Salesmen get a report of their own sales and returns only, without
+/// cost, profit, expenses or other cashiers' totals.
+/// </summary>
+public sealed class ReportService(IReportQueries queries, IStoreClock storeClock, ICurrentUser currentUser) : IReportService
 {
     private const int TopProductCount = 10;
 
@@ -14,17 +18,22 @@ public sealed class ReportService(IReportQueries queries, IStoreClock storeClock
         var range = storeClock.ToUtcRange(from, to);
         var offset = storeClock.OffsetMinutes(range.FromUtc);
 
-        var sales = await queries.GetSalesByHourAsync(range, offset, null, ct);
-        var returns = await queries.GetReturnsByHourAsync(range, offset, null, ct);
-        var expenses = await queries.GetExpensesAsync(range, ct);
-        var items = await queries.GetItemTotalsAsync(range, ct);
-        var topProducts = await queries.GetTopProductsAsync(range, TopProductCount, ct);
-        var cashiers = await queries.GetCashierTotalsAsync(range, ct);
+        var userId = currentUser.IsAdmin ? (int?)null : currentUser.UserId;
+
+        var sales = await queries.GetSalesByHourAsync(range, offset, userId, ct);
+        var returns = await queries.GetReturnsByHourAsync(range, offset, userId, ct);
+        var items = await queries.GetItemTotalsAsync(range, userId, ct);
+        var topProducts = await queries.GetTopProductsAsync(range, TopProductCount, userId, ct);
+        IReadOnlyList<ExpenseRow> expenses = userId == null ? await queries.GetExpensesAsync(range, ct) : [];
+        IReadOnlyList<CashierRow> cashiers = userId == null ? await queries.GetCashierTotalsAsync(range, ct) : [];
 
         var summary = BuildSummary(sales, returns, items, expenses.Sum(e => e.Amount));
+        if (userId != null)
+            summary = summary with { CostOfGoods = 0, GrossProfit = 0, Expenses = 0, NetProfit = 0 };
         var buckets = BuildBuckets(query.Period, from, to, sales, returns);
 
         return new SalesReportDto(
+            userId != null,
             query.Period,
             from,
             to,

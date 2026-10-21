@@ -38,7 +38,8 @@ public sealed class ApiSmokeTests(PosApiFactory factory) : IClassFixture<PosApiF
 
         Assert.Equal(HttpStatusCode.Forbidden,
             (await client.PostAsJsonAsync("/api/products", new { name = "X", salePrice = 10 })).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/reports/sales?period=Monthly")).StatusCode);
+        var report = await client.GetFromJsonAsync<JsonObject>("/api/reports/sales?period=Monthly");
+        Assert.True(report!["ownSalesOnly"]!.GetValue<bool>());
 
         // No register yet => 204, then open one.
         Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync("/api/registers/current")).StatusCode);

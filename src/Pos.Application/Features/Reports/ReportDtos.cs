@@ -8,7 +8,12 @@ public sealed record SalesReportQuery
     public DateOnly? Date { get; init; }
 }
 
+/// <param name="OwnSalesOnly">
+/// True for salesmen: the report covers only the caller's sales and returns, and cost, profit, expenses
+/// and cashier totals are left out (zero or empty).
+/// </param>
 public sealed record SalesReportDto(
+    bool OwnSalesOnly,
     ReportPeriod Period,
     DateOnly From,
     DateOnly To,

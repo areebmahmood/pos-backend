@@ -185,14 +185,17 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 | POST | `/expenses` | `{ title, category?, amount, notes? }` | `201 ExpenseDto`. Paid from the caller's open register (required). |
 | DELETE *(Admin)* | `/expenses/{id}` | | `204` |
 
-## Reports *(Admin)*
+## Reports
 
 ### `GET /reports/sales?period=Daily|Weekly|Monthly|Yearly&date=yyyy-MM-dd`
 `date` defaults to today (store time zone). The range is the day, ISO week (Mon–Sun), month or year containing `date`.
 Buckets: `Daily` → per hour, `Weekly`/`Monthly` → per day, `Yearly` → per month.
+Admins get the store-wide report (`ownSalesOnly: false`). Salesmen get `ownSalesOnly: true`: only their own sales and
+the returns they processed, with `costOfGoods`, `grossProfit`, `expenses` and `netProfit` set to `0` and
+`cashiers`, `expenseCategories` and `expenses` empty.
 
 ```json
-{ "period": "Monthly", "from": "2026-10-01", "to": "2026-10-31",
+{ "ownSalesOnly": false, "period": "Monthly", "from": "2026-10-01", "to": "2026-10-31",
   "summary": { "saleCount": 120, "returnCount": 3, "itemsSold": 410,
                "grossSales": 250000, "itemDiscounts": 5000, "billDiscounts": 1000,
                "netSales": 244000, "returns": 2000, "netRevenue": 242000,

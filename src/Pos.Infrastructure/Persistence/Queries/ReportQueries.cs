@@ -99,9 +99,9 @@ internal sealed class ReportQueries(PosDbContext db) : IReportQueries
         return rows.Select(r => new ExpenseRow(r.Id, r.CreatedAt, r.Title, r.Category, r.Amount, r.CreatedBy)).ToList();
     }
 
-    public async Task<ItemTotals> GetItemTotalsAsync(DateRange range, CancellationToken ct)
+    public async Task<ItemTotals> GetItemTotalsAsync(DateRange range, int? cashierId, CancellationToken ct)
     {
-        var totals = await SaleItemsIn(range)
+        var totals = await SaleItemsIn(range, cashierId)
             .GroupBy(_ => 1)
             .Select(g => new { Quantity = g.Sum(i => i.Quantity), Cost = g.Sum(i => i.UnitCost * i.Quantity) })
             .FirstOrDefaultAsync(ct);
@@ -109,9 +109,9 @@ internal sealed class ReportQueries(PosDbContext db) : IReportQueries
         return new ItemTotals(totals?.Quantity ?? 0, totals?.Cost ?? 0);
     }
 
-    public async Task<IReadOnlyList<TopProductRow>> GetTopProductsAsync(DateRange range, int take, CancellationToken ct)
+    public async Task<IReadOnlyList<TopProductRow>> GetTopProductsAsync(DateRange range, int take, int? cashierId, CancellationToken ct)
     {
-        var rows = await SaleItemsIn(range)
+        var rows = await SaleItemsIn(range, cashierId)
             .GroupBy(i => new { i.ProductId, i.ProductName })
             .Select(g => new { g.Key.ProductId, g.Key.ProductName, Quantity = g.Sum(i => i.Quantity), Revenue = g.Sum(i => i.LineTotal) })
             .OrderByDescending(p => p.Revenue)
@@ -152,8 +152,9 @@ internal sealed class ReportQueries(PosDbContext db) : IReportQueries
         return new PeriodTotals(sales?.Total ?? 0, sales?.Count ?? 0, returns, expenses);
     }
 
-    private IQueryable<Domain.Entities.SaleItem> SaleItemsIn(DateRange range) =>
+    private IQueryable<Domain.Entities.SaleItem> SaleItemsIn(DateRange range, int? cashierId) =>
         db.Sales.AsNoTracking()
             .Where(s => s.CreatedAt >= range.FromUtc && s.CreatedAt < range.ToUtc)
+            .Where(s => cashierId == null || s.CashierId == cashierId)
             .SelectMany(s => s.Items);
 }
