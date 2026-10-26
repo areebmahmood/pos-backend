@@ -10,6 +10,12 @@ public interface ISaleRepository : IRepository<Sale>
     /// <summary>Loads a sale with its items (tracked, for returns).</summary>
     Task<Sale?> GetWithItemsAsync(int id, CancellationToken ct);
 
+    /// <summary>Loads a sale with its items, products and returns (tracked, for deletion).</summary>
+    Task<Sale?> GetForDeletionAsync(int id, CancellationToken ct);
+
+    /// <summary>Removes a sale together with its returns.</summary>
+    void RemoveWithReturns(Sale sale);
+
     Task<TResult?> FindAsync<TResult>(int id, Expression<Func<Sale, TResult>> selector, CancellationToken ct);
 
     Task<TResult?> FindByInvoiceAsync<TResult>(string invoiceNumber, Expression<Func<Sale, TResult>> selector, CancellationToken ct);

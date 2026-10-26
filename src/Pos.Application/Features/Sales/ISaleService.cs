@@ -13,4 +13,7 @@ public interface ISaleService
     Task<SaleDto> GetByInvoiceAsync(string invoiceNumber, CancellationToken ct);
 
     Task<ReceiptDto> GetReceiptAsync(int id, CancellationToken ct);
+
+    /// <summary>Admin only: deletes a sale and its returns, putting unreturned items back in stock.</summary>
+    Task DeleteAsync(int id, CancellationToken ct);
 }

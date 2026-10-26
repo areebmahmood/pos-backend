@@ -219,6 +219,18 @@ public class Sale : AuditableEntity
         _returns.Add(saleReturn);
         return saleReturn;
     }
+
+    /// <summary>
+    /// Prepares the sale for deletion: returns the quantity still with the customer for each item
+    /// (returned units were already put back in stock) and frees up the discount code use.
+    /// </summary>
+    public IReadOnlyList<(SaleItem Item, decimal Quantity)> ReleaseForDeletion(DiscountCode? discountCode)
+    {
+        if (discountCode is not null && discountCode.Id == DiscountCodeId)
+            discountCode.ReleaseUse();
+
+        return _items.Where(i => i.ReturnableQuantity > 0).Select(i => (i, i.ReturnableQuantity)).ToList();
+    }
 }
 
 /// <summary>A requested bill line: the product, quantity and any extra discount per unit.</summary>

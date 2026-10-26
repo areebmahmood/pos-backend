@@ -60,6 +60,13 @@ public sealed class ApiSmokeTests(PosApiFactory factory) : IClassFixture<PosApiF
         Assert.Equal("Cash", (string?)saleJson!["paymentMethod"]);
         Assert.Equal(640m, (decimal)saleJson["total"]!);
 
+        // Timestamps are UTC and must say so, or browsers read them as their own local time.
+        Assert.EndsWith("Z", (string)saleJson["createdAt"]!);
+        var listed = await client.GetFromJsonAsync<JsonObject>("/api/sales");
+        Assert.EndsWith("Z", (string)listed!["items"]![0]!["createdAt"]!);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync($"/api/sales/{(int)saleJson["id"]!}")).StatusCode);
+
         var receipt = await client.GetFromJsonAsync<JsonObject>($"/api/sales/{(int)saleJson["id"]!}/receipt");
         Assert.Equal((string)saleJson["invoiceNumber"]!, (string)receipt!["qrContent"]!);
         Assert.False(string.IsNullOrEmpty((string?)receipt["store"]!["urduInstructions"]));

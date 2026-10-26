@@ -17,6 +17,8 @@ Enums are serialized as **strings**. Timestamps are ISO-8601 UTC (`2026-10-10T09
   ```
   Status codes: `400` validation / business rule, `401` not signed in, `403` forbidden, `404` not found, `409` conflict (duplicate barcode, register already open, concurrent stock update).
 
+- **Timestamps** (`createdAt`, `openedAt`, …) are UTC and always end in `Z`. Clients show them in the store time zone (`timeZoneId` in settings, `Asia/Karachi` by default).
+
 ## Enums
 
 | Enum | Values |
@@ -26,7 +28,7 @@ Enums are serialized as **strings**. Timestamps are ISO-8601 UTC (`2026-10-10T09
 | `OnlinePaymentType` | `JazzCash`, `EasyPaisa`, `BankTransfer` |
 | `RegisterStatus` | `Open`, `Closed` |
 | `SaleStatus` | `Completed`, `PartiallyReturned`, `Returned` |
-| `StockAdjustmentType` | `Initial`, `Manual`, `Sale`, `Return` |
+| `StockAdjustmentType` | `Initial`, `Manual`, `Sale`, `Return`, `SaleDeleted` |
 | `ReportPeriod` | `Daily`, `Weekly`, `Monthly`, `Yearly` |
 | `DiscountType` | `Percentage`, `Amount` |
 | `MessageKind` | `ThankYou`, `Promotion` |
@@ -160,6 +162,7 @@ Each user has at most one open register. Sales, returns and cash expenses requir
 | GET | `/sales/{id}` | | `SaleDto` |
 | GET | `/sales/invoice/{invoiceNumber}` | | `SaleDto` |
 | GET | `/sales/{id}/receipt` | | `ReceiptDto` |
+| DELETE *(Admin)* | `/sales/{id}` | | `204`. Deletes the sale and any returns made against it. Units still with the customer (sold minus returned) go back into stock with a `SaleDeleted` stock adjustment, a discount code use is given back, and WhatsApp messages for the sale stay in the log without the link. A closed register keeps the totals it was closed with. |
 
 `ReceiptDto`: `{ store: StoreSettingsDto, sale: SaleDto, qrContent: string }`. `qrContent` is the text to encode into the receipt QR code: just the invoice number, so scanning it into the returns search finds the sale.
 

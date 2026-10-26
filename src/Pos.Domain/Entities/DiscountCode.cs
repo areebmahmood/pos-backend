@@ -100,4 +100,7 @@ public class DiscountCode : AuditableEntity
     }
 
     internal void RegisterUse() => UsedCount++;
+
+    /// <summary>Gives back a use when the sale that used the code is deleted.</summary>
+    internal void ReleaseUse() => UsedCount = Math.Max(0, UsedCount - 1);
 }

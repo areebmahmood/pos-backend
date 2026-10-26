@@ -110,6 +110,28 @@ public sealed class SaleService(
         return new ReceiptDto(store, sale, BuildQrContent(sale));
     }
 
+    public async Task DeleteAsync(int id, CancellationToken ct)
+    {
+        await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            var sale = await sales.GetForDeletionAsync(id, token) ?? throw NotFoundException.For("Sale", id);
+            var discountCode = sale.DiscountCodeId is { } codeId ? await discountCodes.GetByIdAsync(codeId, token) : null;
+
+            foreach (var (item, quantity) in sale.ReleaseForDeletion(discountCode))
+            {
+                var before = item.Product.AdjustStock(quantity);
+                stockAdjustments.Add(new StockAdjustment(
+                    item.Product, StockAdjustmentType.SaleDeleted, quantity, before, currentUser.UserId,
+                    $"Sale {sale.InvoiceNumber} deleted", sale.Id));
+            }
+
+            await messages.DetachSaleAsync(sale.Id, token);
+            sales.RemoveWithReturns(sale);
+            await unitOfWork.SaveChangesAsync(token);
+            return sale.Id;
+        }, ct);
+    }
+
     private async Task<Customer?> FindOrCreateCustomerAsync(CreateSaleRequest request, StoreSettings store, CancellationToken ct)
     {
         var phone = PhoneNumber.Normalize(request.CustomerPhone, store.DefaultCountryCode);
