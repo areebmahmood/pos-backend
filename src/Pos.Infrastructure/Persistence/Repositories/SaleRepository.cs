@@ -12,6 +12,19 @@ internal sealed class SaleRepository(PosDbContext db) : Repository<Sale>(db), IS
     public Task<Sale?> GetWithItemsAsync(int id, CancellationToken ct) =>
         Set.Include(s => s.Items).FirstOrDefaultAsync(s => s.Id == id, ct);
 
+    public Task<Sale?> GetForDeletionAsync(int id, CancellationToken ct) =>
+        Set.Include(s => s.Items).ThenInclude(i => i.Product)
+            .Include(s => s.Returns).ThenInclude(r => r.Items)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
+
+    public void RemoveWithReturns(Sale sale)
+    {
+        // Returns are restricted (not cascaded) so a sale can never lose them by accident.
+        Db.SaleReturns.RemoveRange(sale.Returns);
+        Set.Remove(sale);
+    }
+
     public Task<TResult?> FindAsync<TResult>(int id, Expression<Func<Sale, TResult>> selector, CancellationToken ct) =>
         Set.AsNoTracking().Where(s => s.Id == id).Select(selector).FirstOrDefaultAsync(ct);
 

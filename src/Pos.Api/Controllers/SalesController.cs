@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
 using Pos.Application.Features.Sales;
+using Pos.Domain.Common;
 
 namespace Pos.Api.Controllers;
 
@@ -28,4 +30,13 @@ public sealed class SalesController(ISaleService sales) : ApiControllerBase
 
     [HttpGet("{id:int}/receipt")]
     public Task<ReceiptDto> Receipt(int id, CancellationToken ct) => sales.GetReceiptAsync(id, ct);
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = Roles.Admin)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        await sales.DeleteAsync(id, ct);
+        return NoContent();
+    }
 }

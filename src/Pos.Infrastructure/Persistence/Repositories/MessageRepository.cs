@@ -12,6 +12,10 @@ internal sealed class MessageRepository(PosDbContext db) : IMessageRepository
 {
     public void Add(OutgoingMessage message) => db.OutgoingMessages.Add(message);
 
+    public Task DetachSaleAsync(int saleId, CancellationToken ct) =>
+        db.OutgoingMessages.Where(m => m.SaleId == saleId)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.SaleId, (int?)null), ct);
+
     public void AddPromotion(Promotion promotion) => db.Promotions.Add(promotion);
 
     public async Task<IReadOnlyList<OutgoingMessage>> GetPendingAsync(int take, DateTime utcNow, CancellationToken ct) =>

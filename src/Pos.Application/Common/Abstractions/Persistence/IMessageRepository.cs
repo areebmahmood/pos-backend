@@ -11,6 +11,9 @@ public interface IMessageRepository
 
     void AddPromotion(Promotion promotion);
 
+    /// <summary>Unlinks the message history of a sale that is being deleted.</summary>
+    Task DetachSaleAsync(int saleId, CancellationToken ct);
+
     /// <summary>The oldest pending messages that are due, tracked so their status can be updated.</summary>
     Task<IReadOnlyList<OutgoingMessage>> GetPendingAsync(int take, DateTime utcNow, CancellationToken ct);
 

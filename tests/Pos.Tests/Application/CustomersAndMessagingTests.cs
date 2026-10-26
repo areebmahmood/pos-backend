@@ -151,6 +151,31 @@ public sealed class CustomersAndMessagingTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Deleting_a_sale_restocks_unreturned_items_and_removes_its_returns_and_code_use()
+    {
+        await EnableWhatsAppAsync();
+        await CreateCodeAsync(new SaveDiscountCodeRequest("ONCE", null, DiscountType.Amount, 100, null, null, null, null, 1));
+        var sale = await CheckoutAsync(phone: "03001234567", quantity: 3, discountCode: "ONCE");
+        await _host.RunAsync<IReturnService, SaleReturnDto>(s => s.CreateAsync(
+            new CreateReturnRequest(sale.Id, null, [new ReturnLineRequest(sale.Items.Single().Id, 1)]), default));
+        Assert.Equal(98, await StockAsync());
+
+        await _host.RunAsync<ISaleService>(s => s.DeleteAsync(sale.Id, default));
+
+        Assert.Equal(100, await StockAsync());
+        Assert.Equal(0, await _host.QueryDbAsync(db => db.Sales.CountAsync()));
+        Assert.Equal(0, await _host.QueryDbAsync(db => db.SaleReturns.CountAsync()));
+        Assert.False(await _host.QueryDbAsync(db => db.OutgoingMessages.AnyAsync(m => m.SaleId != null)));
+        var ledger = await _host.QueryDbAsync(db => db.StockAdjustments.SingleAsync(a => a.Type == StockAdjustmentType.SaleDeleted));
+        Assert.Equal(2, ledger.QuantityChange);
+        Assert.Equal(sale.Id, ledger.ReferenceId);
+
+        // The code's single use was given back.
+        Assert.Equal("ONCE", (await CheckoutAsync(phone: null, discountCode: "ONCE")).DiscountCode);
+        await Assert.ThrowsAsync<NotFoundException>(() => _host.RunAsync<ISaleService>(s => s.DeleteAsync(sale.Id, default)));
+    }
+
+    [Fact]
     public async Task Discount_code_rules_are_enforced()
     {
         await CreateCodeAsync(new SaveDiscountCodeRequest("BIG", null, DiscountType.Amount, 200, 5000, null, null, null, null));
@@ -174,6 +199,9 @@ public sealed class CustomersAndMessagingTests : IAsyncLifetime
     private Task EnableWhatsAppAsync() =>
         _host.RunAsync<ISettingsService, WhatsAppSettingsDto>(s => s.UpdateWhatsAppAsync(
             new UpdateWhatsAppSettingsRequest(true, "123456", "token", "thank_you", "promo", "en", "92"), default));
+
+    private Task<decimal> StockAsync() =>
+        _host.QueryDbAsync(db => db.Products.Where(p => p.Id == _shirt.Id).Select(p => p.StockQuantity).SingleAsync());
 
     private Task<CustomerDto> CreateCustomerAsync(string? name, string phone) =>
         _host.RunAsync<ICustomerService, CustomerDto>(s => s.CreateAsync(new SaveCustomerRequest(name, phone), default));
